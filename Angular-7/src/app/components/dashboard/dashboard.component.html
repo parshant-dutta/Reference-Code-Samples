@@ -1,0 +1,42 @@
+<app-authenticatelayout></app-authenticatelayout>
+<div class="offset-md-1 col-md-10">
+  <table class="table table-bordered">
+    <thead>
+      <th>Name</th>
+      <th>E-Mail Address</th>
+      <th>Date Of Birth</th>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Parshant Dutta</td>
+        <td>parshantwins@gmail.com</td>
+        <td>02-May-1994</td>
+      </tr>
+      <tr>
+        <td>Rishi Dutta</td>
+        <td>parshantdutta251@gmail.com</td>
+        <td>02-May-1994</td>
+      </tr>
+    </tbody>
+  </table>
+</div>  
+<div class="offset-md-4 col-md-3 text-center">
+    <button class="btn btn-lg btn-outline-primary" (click)="open(content)">Launch demo modal</button>
+  </div>
+
+    <ng-template #content let-c="close" let-d="dismiss">
+      <div class="modal-header">
+        <h4 class="modal-title" id="modal-basic-title">Hi there!</h4>
+        <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Welcome to the world of imagination!</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-dark" (click)="c('Save click')">Save</button>
+      </div>
+    </ng-template>
+    
+<app-footer></app-footer>

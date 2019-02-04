@@ -1,0 +1,87 @@
+<app-header></app-header>
+<div class="container h-100">
+  <div class="row justify-content-md-center h-100 app-auth-pages mt-5">
+    <div class="card-wrapper">
+      <!-- <div class="brand">
+        
+      </div> -->
+      <div class="card fat">
+        <div class="card-body">
+          <h4 class="card-title">Register</h4>
+          <form method="POST" (ngSubmit)="onSubmit()" [formGroup]="registerform">
+              <div *ngIf="!registerform.value.authenticationFlag" class="alert alert-danger small">
+                <div *ngFor="let item of registerform.value.authenticationMessage | keyvalue">
+                  {{item.value}}
+                </div>
+              </div> 
+            <div class="form-group">
+              <label for="name">Name</label>
+              <input id="name" type="text" class="form-control" name="name" formControlName="name" required (blur)="LogValidationError()">
+              <div class="alert alert-danger" *ngIf="formErrors.name">
+                <span class="help-block">
+                  {{formErrors.name}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">E-Mail Address</label>
+              <input id="email" type="email" class="form-control" name="email" formControlName="email" required (blur)="LogValidationError()">
+              <div class="alert alert-danger" *ngIf="formErrors.email">
+                <span class="help-block">
+                  {{formErrors.email}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input id="password" type="password" class="form-control" name="password"formControlName="password" required data-eye (blur)="LogValidationError()">
+              <div class="alert alert-danger" *ngIf="formErrors.password">
+               <span class="help-block">
+                  {{formErrors.password}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="confirmpassword">Confirm Password</label>
+              <input id="confirmpassword" type="password" class="form-control" name="confirmpassword" formControlName="confirmpassword" required (blur)="LogValidationError()">
+              <div class="alert alert-danger" *ngIf="formErrors.confirmpassword">
+                <span class="help-block">
+                  {{formErrors.confirmpassword}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="dateofbirth">Date Of Birth</label>
+              <input type="text" id="dateofbirth" name="dateofbirth" formControlName="dateofbirth" class="form-control" bsDatepicker readonly (blur)="LogValidationError()" (ngChange)="LogValidationError()">
+              <div class="alert alert-danger" *ngIf="formErrors.dateofbirth">
+                <span class="help-block">
+                    {{formErrors.dateofbirth}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" name="aggree" value="1"> I agree to the Terms and Conditions
+              </label>
+            </div>
+
+            <div class="form-group no-margin">
+              <button type="submit" class="btn btn-primary btn-block" [disabled]="!registerform.valid">
+                Register
+              </button>
+            </div>
+            <div class="margin-top20 text-center">
+              Already have an account? <a [routerLink]="['/login']">Login</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<app-footer></app-footer>

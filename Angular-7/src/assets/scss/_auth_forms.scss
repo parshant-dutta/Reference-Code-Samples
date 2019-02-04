@@ -1,0 +1,58 @@
+.app-auth-pages {
+  .brand {
+    width: 90px;
+    height: 90px;
+    overflow: hidden;
+    border-radius: 50%;
+    margin: 0 auto;
+    margin: 40px auto;
+    box-shadow: 0 0 40px $box-shadow-color;
+    img {
+      width: 100%;
+    }
+  }
+  .card-wrapper {
+    width: 400px;
+    margin: 0 auto;
+    @media screen and (max-width: $above-small-screen) {
+      width: 90%;
+      margin: 0 auto;
+    }
+  }
+  .card {
+    border-color: transparent;
+    box-shadow: 0 0 40px $box-shadow-color;
+    background: $light-gray;
+    &.fat {
+      padding: 10px;
+      .card-body {
+        @media screen and (max-width: $small-screen) {
+          padding: 15px;
+        }
+      }
+      @media screen and (max-width: $small-screen) {
+        padding: 0;
+      }
+    }
+
+    .card-title {
+      margin-bottom: 30px;
+    }
+  }
+
+  .form-control {
+    border-width: 2.3px;
+    label {
+      width: 100%;
+    }
+  }
+  .btn.btn-block {
+    padding: 12px 10px;
+  }
+  .margin-top20 {
+    margin-top: 20px;
+  }
+  .no-margin {
+    margin: 0;
+  }
+}
