@@ -1,0 +1,68 @@
+<app-alert *ngIf="alert.show" [type]="alert.type" [errorNumber]="alert.errorNumber" [message]="alert.message">
+</app-alert>
+<div class="subheader subheader-solid" id="kt_subheader">
+  <div class="container-fluid d-flex align-items-center justify-content-between flex-wrap flex-sm-nowrap">
+    <div class="d-flex align-items-center flex-wrap mr-2">
+      <nz-breadcrumb>
+        <nz-breadcrumb-item>
+          <span labelValue key="Home" category="PageTitle"></span>
+        </nz-breadcrumb-item>
+        <nz-breadcrumb-item>
+          <a><span labelValue key="ServicesHeader" category="PageTitle"></span> </a>
+        </nz-breadcrumb-item>
+      </nz-breadcrumb>
+    </div>
+  </div>
+</div>
+<!---->
+<section class="services" *ngIf="!isCallFromExternal">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="serviceCard">
+          <div class="serviceGroup">
+            <div class="serviceList active" *ngFor="let group of groupsAndServices; let i=index">
+              <a [routerLink]='"."' [fragment]="group.id">
+                <div class="serviceIcon"></div>
+                <div class="serviceContent" id="div_{{i}}" (click)="getPostion(i)">{{group.name | translate}}</div>
+              </a>
+            </div>
+          </div>
+          <div class="serviceBody">
+            <div class="serviceInner">
+              <!-- Define the recursive template. -->
+              <ng-template #nodeTemplateRef let-node>
+                <div class="groupName" [attr.id]='node.id' >
+                  <h1 *ngIf="!node.childGroups" class="service-title" [class.main-group]="node.parentId < 1">{{node.name
+                    | translate :
+                    isSpinning}}</h1>
+                </div>
+                <div class="groupServices" [attr.id]='node.id'>
+                  <app-services-list [serviceData]="node.groupServices" (serviceClickEvent)="createAppplication($event)"
+                    [isLoad]="isSpinning" [isApiCall]="apiCall"></app-services-list>
+                  <div *ngIf="node.childGroups != null" class="node__children">
+                    <!-- Invoke the recursive template. -->
+                    <ng-template ngFor [ngForOf]="node.childGroups | parse" [ngForTemplate]="nodeTemplateRef">
+                      <!-- NOTE: The "$implicit" property of the ngFor context is what will
+                         be made available to the template ref's implicit let-node binding. -->
+                    </ng-template>
+                  </div>
+                </div>
+              </ng-template>
+              <ng-template [ngTemplateOutlet]="nodeTemplateRef" [ngTemplateOutletContext]="{ $implicit: data }"
+                *ngFor="let data of groupsAndServices">
+              </ng-template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="flex-column-fluid" *ngIf="isCallFromExternal">  
+  <app-loader [loader]="loader"></app-loader>
+  <div class="error-message">
+    <nz-alert nzType="info" nzMessage="Informational Notes" nzShowIcon></nz-alert>
+  </div>
+</div>

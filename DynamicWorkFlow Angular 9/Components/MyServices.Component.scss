@@ -1,0 +1,112 @@
+.inner-content {
+    padding: 24px 24px 2px;
+}
+.services {
+    padding:15px 0;
+    .serviceCard {
+        border:0px solid #ddd;
+        border-radius: 5px;
+        position: relative;
+        display: flex;
+        @media (max-width: 767px){
+         display:block;
+        }
+        .serviceGroup{
+            width: 300px;
+            padding:0px;
+            position: relative;
+            top: 0;       
+            height: 100%;
+            @media (max-width: 767px) {
+              width:100%;
+              border-bottom: 1px solid #ddd;
+              padding:0px;
+            }
+          .serviceList {
+            display: block;
+            position: relative;
+            padding: 0 0 30px 0;
+            a{
+              .serviceIcon {
+                width:20px;
+                height:20px;
+                border: 1px solid #ddd;
+                text-align: center;
+                border-radius: 50px;
+                margin: 0 12px 0 0;
+                position:absolute;
+                background-color:transparent;
+                left:0;
+                &:before{
+                    content: "";
+                    position: absolute;
+                    background: #ddd;
+                    height: 100%;
+                    width: 1px;
+                    top: 26px;
+                    left: 9px;
+                }
+              }
+              .serviceContent {
+                display: block;
+                width: 100%;
+                padding: 0 0 0 30px;
+                font-size:16px;
+                line-height: normal;
+              }
+            }
+            &.active{
+              a{
+                .serviceIcon {
+                  background-color: #b68934; 
+                  color:#fff;
+                  border: 1px solid #b68934;
+              } 
+              .serviceContent{
+                 color:#b68934;
+                 font-weight:500;
+              } 
+              }
+
+            }
+            &:hover{
+              a{
+                text-decoration:none;
+              }
+            }
+            &:last-child{
+              a{
+                .serviceIcon{
+                  &::before{
+                      height:0;
+                  }
+                } 
+              }
+            }
+          }
+          &.fixsidebar{
+            top:0px;
+          }
+        }
+        .serviceBody{
+            padding: 15px 15px 15px 15px;
+            border-left: 1px solid #ddd;
+            width: 100%;
+              @media (max-width: 767px) {
+                border-left: 0px solid #ddd;
+                padding:15px 0 0 0;
+             }
+            .serviceInner{
+              .groupName{
+                 font-size:24px;
+                 color:#b68934;
+                 font-weight: 500;
+              }
+            }
+        }
+     }
+  }
+.error-message{
+  margin: 0px auto;
+  padding: 20%;
+}

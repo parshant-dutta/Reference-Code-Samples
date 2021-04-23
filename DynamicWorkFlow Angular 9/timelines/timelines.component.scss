@@ -1,0 +1,125 @@
+.image-upload {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+.read_more {
+  color: #b68934 !important;
+  cursor: pointer;
+}
+.bold {
+  font-weight: 600;
+}
+::ng-deep.ant-timeline-item {
+  padding-bottom: 0px !important;
+}
+nz-tag{
+  cursor: pointer;
+}
+i.fa.fa-user-circle{  
+  padding: 3px;
+}
+
+ul {
+	&.timeline {
+		list-style-type: none;
+		position: relative;
+		left: -17px;
+		&:before {
+			content: ' ';
+			background: #edeff1;
+			display: inline-block;
+			position: absolute;
+			left: 20px;
+			width: 2px;
+			height: 100%;
+			z-index: 400;
+			top: 7px;
+		}
+		& > li {
+			border-bottom: 0px solid #cacaca;
+			margin-bottom: 5px !important;
+			position: relative;
+			&:before {
+				content: ' ';
+				content: " ";
+				background: white;
+				display: inline-block;
+				position: absolute;
+				border-radius: 50%;
+				border: 2px solid #29925a;
+				left: -24px;
+				width: 10px;
+				height: 10px;
+				z-index: 400;
+				top: 5px;
+			}
+			.showTimeLine{
+				.comment-heading{
+					position: relative;
+					top: 10px;
+					left: 7px;
+					background: #fff;
+					display: inline-block;
+					padding: 0 4px;
+				}
+				.comment-container{
+					border: 1px solid #cacaca;
+					padding: 5px;
+					border-radius:6px;
+					.comment{
+						padding:5px;
+					}
+				}
+			}
+			.action-name{
+				margin: 0 5px;
+			}
+			.action-taker{
+				display: inline-block;
+			}
+			.assigned-user{
+				padding: 0px 4px;
+			}
+		}
+	}
+}
+a{
+color: #b68934;
+    font-weight: bold;
+}
+.comment-container {
+  border: 1px solid #cacaca;
+  padding: 5px;
+}
+.datetime{
+	// background: #bb985c;
+    color: #bb985c;
+    border-radius: 5px;
+    padding: 1px 5px;
+	font-weight: bold;
+}
+.time {
+    position: relative;
+    padding: 0 10px 0 10px;
+		&:before{
+			content: "";
+			background: #818181;
+			height: 100%;
+			width: 1px;
+			position: absolute;
+			left: 0;
+			top: 1px;
+		}
+		&:after{
+			content: "";
+			background: #818181;
+			height: 100%;
+			width: 1px;
+			position: absolute;
+			right: 0;
+			top: 1px;
+		}
+}

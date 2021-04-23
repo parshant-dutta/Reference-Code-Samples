@@ -1,0 +1,29 @@
+<ng-container *ngIf="servicesList">
+  <div class="service">
+    <div class="row">
+        <div *ngFor="let service of servicesList | parse" class="col-md-6 col-lg-4 col-xl-3 col-sm-6">
+           <div class="card">
+            <div class="face face1">
+                <div class="content">
+                    <h3>{{service.name | translate: isSpinning}}</h3>
+                </div>
+            </div>
+             <div class="face face2">
+                <div class="content">
+                  <h3>{{service.name | translate: isSpinning}}</h3>
+                    <!-- <p>{{service.Description | translate: isSpinning}}</p> -->
+                    <!-- <p [innerHtml]="service.Description | translate: isSpinning"></p> -->
+                    <!-- <div class="thumbBtn"> -->
+                      <button *ngIf="service.StartStageID > 0" nz-button  type="button" (click)="createApplication(service)" [disabled]="isApiCall"
+                        class="custom ant-btn-secondary">
+                        <span labelValue [key]="'CreateApplication'" [isLoaded]="isSpinning" [category]="'Button'"></span>
+                      </button>
+                    <!-- </div> -->
+                </div>
+            </div>
+         </div>
+
+        </div>
+    </div>
+  </div>
+  </ng-container>
