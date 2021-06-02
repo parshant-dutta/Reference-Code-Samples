@@ -1,0 +1,115 @@
+.children_row{
+    background: #ffff;
+    border: 1px solid #eeee;
+    label{
+        font-weight: bold;
+    }   
+}
+button{
+    margin: 5px;
+}
+.related-field{
+
+    .parent-record-header{	
+
+        .single-relation-buttons{
+            float: right;
+        }    
+    }
+}
+.related-field-title{
+    font-weight: bold;
+    font-size: 14px;
+}
+
+nz-empty{
+    padding: 48px 32px;
+}
+::ng-deep.ant-result-success .ant-result-icon > .anticon {
+    color: #b68934 !important;
+}
+.icon-right{
+    color: #b68934; 
+	font-size: 20px;
+	vertical-align: middle;
+}
+
+.attachmentSection{
+  display:flex;
+  flex-wrap:wrap;
+  .attachments{
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin: 0 5px 5px 0;
+    border-radius: 5px;
+  }
+}
+
+
+/////// css for the checkbox
+
+.csCheckbox {
+	padding-left: 28px;
+	margin-bottom: 10px;
+	font-size: 15px;
+	color: #b68934;
+	font-family: 'hero_newlight';
+	line-height: 18px;
+	text-transform: uppercase;
+	display: inline-block;
+	position: relative;
+	top: -4px;
+	input {
+		position: absolute;
+		opacity: 0;
+		cursor: pointer;
+		height: 0;
+		width: 0;
+		&:checked {
+			&~.checkmark {
+				background-image: none;
+				border: 1px solid #b68934;
+				&:after {
+					display: block;
+				}
+			}
+		}
+	}
+	.checkmark {
+		background-image: none;
+		border: 1px solid #b68934;
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 18px;
+		width: 18px;
+		border-radius: 3px;
+		&:after {
+			content: "";
+			position: absolute;
+			left: 9px;
+			top: -4px;
+			width: 8px;
+			height: 16px;
+			display: none;
+			border: solid #b68934;
+			border-width: 0 3px 3px 0;
+			-webkit-transform: rotate( 45deg);
+			-ms-transform: rotate(45deg);
+			transform: rotate( 45deg)
+		}
+	}
+    span{
+     font-weight:bold;
+     text-transform: capitalize;
+    }
+}
+.section-fields:not(.child-fields .section-fields){
+	border: 1px solid #dad8d8;
+	border-top: none;
+	padding: 15px;
+}
+.child-fields-container {
+	margin: 25px 0;
+	border-bottom: 1px solid #d2d2d2;
+}

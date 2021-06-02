@@ -1,0 +1,44 @@
+<nz-form-item *ngIf="fieldData" [formGroup]="form">
+    <div class="termsContent">
+        <span labelValue key="termConditions" category="Labels"></span>
+        <div style="display: flex;">
+            <i nz-icon nzType="check" nzTheme="outline" class="checkicon"></i> &nbsp;
+            <label appFormlabel [data]="fieldData.formSectionFieldName" [keyId]="fieldData.entityFieldId"
+                [class]="fieldData | required"></label>
+        </div>
+        <span *ngIf="fieldData.instructions" nz-tooltip nzTooltipPlacement="top"
+            [nzTooltipTitle]="fieldData.instructions | translate">
+            &nbsp; <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </span>
+    </div>
+
+    <nz-form-control [nzErrorTip]="errErrorTpl">
+        <label nz-checkbox [formControlName]="controlName" [nzDisabled]="isDisabled" id="{{'field_'+fieldData.entityFieldId}}"  [attr.aria-label]="controlName"
+            (ngModelChange)="updateFieldValue($event)"><span labelValue key="agreeTerms"
+                category="Labels"></span></label>
+
+        <ng-template #errErrorTpl let-control>
+            <ng-container>
+                <span *ngIf="control.hasError('required')">
+                    <span labelValue key="Required" category="Messages"></span>
+                </span>
+            </ng-container>
+            <!-- <ng-container *ngFor="let constraint of fieldData['constraints']">
+                <span *ngIf="control.hasError('required') && constraint.constraintTypeId == 1">
+                    {{constraint.textMessages | translate }}
+                </span>
+                <span *ngIf="!control.hasError() && !control.hasError('required')">
+                    <span *ngIf="constraint.constraintMessages; else textMessages">
+                        {{constraint.constraintMessages | translate }}
+                    </span>
+                    <ng-template #textMessages>
+                       <span *ngIf="constraint.constraintTypeId != 1">
+                           {{constraint.textMessages | translate }}   
+                        </span> 
+                    </ng-template>                        
+                </span>
+            </ng-container> -->
+        </ng-template>
+    </nz-form-control>
+
+</nz-form-item>

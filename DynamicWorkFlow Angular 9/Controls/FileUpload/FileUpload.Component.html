@@ -1,0 +1,211 @@
+<div *ngIf="fieldData" [formGroup]="form">
+  <div nz-row appVisible>
+    <div nz-row style="width: 100%">
+      <div style="width: 100%">
+        <label class="heading dynamic-control-label" for="{{
+            'checkfield_' +
+              fieldData.FormSectionAttachmentId +
+              '_' +
+              fieldData.AttachmentTypeId | trim
+          }}" [class]="fieldData | required: 'true'" [id]="'label_' + fieldData.FormSectionAttachmentId">
+          {{ fieldData.attachmentName | translate }}
+        </label>
+
+        <button nz-button nz-popover [(nzPopoverVisible)]="visible" (nzPopoverVisibleChange)="change($event)"
+          nzPopoverTrigger="click" [nzPopoverContent]="contentTemplate">
+          <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </button>
+        <ng-template #contentTemplate>
+          <li *ngFor="let constarint of fieldData.constraints">
+            <span class="type" *ngIf="
+                  constarint.typeName != 'Required' &&
+                  constarint.typeName != 'Visible By Value' &&
+                  constarint.typeName != 'Visible By Expression'
+                ">
+              {{ constarint.attachmentLabels | translate }}
+            </span>
+            <span *ngIf="constarint?.Settings != 'null'">
+              <ng-template [ngTemplateOutlet]="nodeTemplateRef" [ngTemplateOutletContext]="{
+                    $implicit: constarint.Settings | parse
+                  }">
+              </ng-template>
+              <ng-template #nodeTemplateRef let-node>
+                <span *ngIf="constarint.typeName == 'MaxSize'">
+                  {{ node.AllowedFileSize | filesize }}
+                </span>
+                <span *ngIf="constarint.typeName == 'MaxFiles'">
+                  {{ node.AllowedTotalFiles }}
+                </span>
+                <span *ngIf="constarint.typeName == 'AllowedExtensions'">
+                  {{ node.AllowedExtensions }}
+                </span>
+              </ng-template>
+            </span>
+          </li>
+        </ng-template>
+        <span *ngIf="fieldData.instructions" nz-tooltip nzTooltipPlacement="top"
+          [nzTooltipTitle]="fieldData.instructions | translate">
+          &nbsp; <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </span>
+
+        <!-- {{fieldData.AttachmentFiles | json}}
+        {{fieldData | json}} -->
+
+        <div class="row">
+          <div class="col-md-12">
+            <nz-form-control [nzErrorTip]="errErrorTpl">
+              <div class="image-upload">
+                <ng-container *ngFor="let item of fieldData.AttachmentFiles">
+                  <!-- <a href="{{this.attachmentPreviewLink}}" target="_blank">View Here</a> -->
+                  <div class="image-wrapper" [class.enabled]="sectionData.formMode == 1">
+                    <div *ngIf="fieldData?.ItemIndex == item.ItemIndex" class="attachment-border"
+                      style="padding-bottom:10px; margin-bottom: 10px;">
+                      <div *ngIf="fieldData?.ItemIndex == item.ItemIndex" class="greyBg">
+
+                        <div class="image-preview">
+                          <!-- {{item.Extension}} -->
+                          <img *ngIf="fieldData?.Settings && (fieldData?.Settings| parse).preview && item.id > 0"
+                            src="{{apiURl}}/UploadAttachment/GetAttachmentById?attachmentId={{item.id}}&download=false"
+                            class="photo" />
+                          <div [ngSwitch]="item.Extension" *ngIf="!(fieldData?.Settings | parse).preview">
+                            <i nz-icon nzType="file-image" nzTheme="outline" *ngSwitchCase="'image/png'"></i>
+                            <i nz-icon nzType="file-image" nzTheme="outline" *ngSwitchCase="'image/jpg'"></i>
+                            <i nz-icon nzType="file-image" nzTheme="outline" *ngSwitchCase="'image/jpeg'"></i>
+                            <i nz-icon nzType="file-pdf" nzTheme="outline" *ngSwitchCase="'application/pdf'"></i>
+                            <i nz-icon nzType="file-excel" nzTheme="outline" *ngSwitchCase="'application/vnd.open'"></i>
+                            <i nz-icon nzType="file" nzTheme="outline" *ngSwitchDefault></i>
+                          </div>
+                        </div>
+                        <div *ngIf="!(fieldData?.Settings | parse).preview" class="doc-title">{{ item.FileName }}</div>
+                        <div *ngIf="!(fieldData?.Settings | parse).preview" class="doc-size">{{ item.Size | filesize }}
+                        </div>
+                      </div>
+                      <div class="attachments" *ngIf="fieldData?.ItemIndex == item.ItemIndex">
+
+                        <div *ngIf="item?.status != 0" class="previewIcon commonIcon"
+                          (click)="downloadFile(item.id,'preview')" nz-popover [nzPopoverContent]="view">
+                          <i nz-icon nzType="eye" nzTheme="outline"></i>
+                          <ng-template #view>
+                            <span labelValue key="View" category="Labels"></span>
+                          </ng-template>
+                        </div>
+                        <div *ngIf="item?.status != 0" class="downloadIcon commonIcon" nz-popover
+                          [nzPopoverContent]="download">
+                          <a href="{{apiURl}}/UploadAttachment/GetAttachmentById?attachmentId={{item.id}}&download=true"
+                            target="_blank">
+                            <i nz-icon nzType="download" nzTheme="outline"></i>
+                            <ng-template #download>
+                              <span labelValue key="Download" category="Labels"></span>
+                            </ng-template>
+                          </a>
+                        </div>
+                        <!-- && fieldData?.FieldModeId ==1 -->
+                        <ng-container *ngIf="item?.status != 0 && sectionData.formMode == 1">
+                          <div class="cross-icon commonIcon" *ngIf="!fieldData.isDisable">
+                            <i nz-popover [nzPopoverContent]="cross" nz-icon nzType="close" nzTheme="outline"
+                              nz-popconfirm [nzPopconfirmTitle]="deleteConfirmationText"
+                              (nzOnConfirm)="removeFile(item, fieldData)" (nzOnCancel)="cancel()"
+                              nzPopconfirmPlacement="bottom" [nzOkText]="buttonYesText"
+                              [nzCancelText]="buttonCancelText" nz-button></i>
+                            <ng-template #cross>
+                              <span labelValue key="Remove" category="Labels"></span>
+                            </ng-template>
+                          </div>
+                        </ng-container>
+                      </div>
+                    </div>
+                    <ng-container *ngIf="item?.status == 0">
+                      <nz-spin [nzTip]="" style="position: absolute;top: 70%; left: 50%;"
+                        [nzSpinning]="item.status == 0">
+                      </nz-spin>
+                    </ng-container>
+                    <ng-container>
+                      <div *ngFor="let fileStatus of uploadProgress | async">
+                        <!-- fileStatus.attachmentId == fieldData.AttachmentId -->
+
+                        <div
+                          *ngIf="fileStatus.attachmentId == fieldData.AttachmentId && fileStatus.fileOrderNo == item.fileOrderNo && fileStatus.showProgress"
+                          class="row" style="padding: 0px;">
+                          <div class="col-lg-12">
+                            <button (click)="cancelUpload(item.fileOrderNo, fieldData, fileStatus)"
+                              class="ant-btn ant-btn-primary cancel-upload-btn">
+                              <i class="fa fa-close" *ngIf="fileStatus.progress != '100'"></i>
+                            </button>
+                            <nz-progress [nzPercent]="fileStatus.progress"
+                              [nzStrokeColor]="{ '0%': '#108ee9', '100%': '#87d068' }"></nz-progress>
+                            <p class="uploading-text" *ngIf="fileStatus.progress != '100'"> <span labelValue key="FileUploading" category="Labels"></span>..</p>
+                            <p class="finalize-text" *ngIf="fileStatus.progress == '100'"> <span labelValue key="FileFinalize" category="Labels"></span>..</p>
+                          </div>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
+                </ng-container>
+                <!-- && fieldData?.FieldModeId == 1 -->
+                <div class="upload-btn-wrapper" *ngIf="sectionData.formMode == 1"
+                  id="attachment_{{ fieldData.AttachmentId }}">
+                  <ng-container *ngIf="!fieldData?.isDisable">
+                    <input class="inputfile" #file type="file" id="file-{{ fieldData.AttachmentId }}"
+                      (change)="upload(file.files, fieldData)" (blur)="onFocusout($event)" />
+                    <label for="file-{{ fieldData.AttachmentId }}">
+                      <i class="fa fa-cloud-upload" aria-hidden="true"></i>
+                      <span labelValue key="UploadFile" category="Button"></span>
+                    </label>
+
+
+                  </ng-container>
+                </div>
+              </div>
+              <input type="hidden" [formControlName]="controlName" [attr.aria-label]="controlName" />
+              <ng-template #errErrorTpl let-control>
+                <ng-container *ngFor="let constraint of fieldData['constraints']">
+                  <ng-container>
+                    <span *ngIf="
+                        control.hasError('required') &&
+                        constraint.constraintTypeId == 1 &&
+                        fieldData['invalidField'] != true
+                      ">
+                      {{ constraint.textMessages | translate }}
+                    </span>
+                    <span *ngIf="
+                        !control.hasError() && !control.hasError('required')
+                      ">
+                      <span *ngIf="constraint.constraintMessages; else textMessages">
+                        {{ constraint.constraintMessages | translate }}
+                      </span>
+                      <ng-template #textMessages>
+                        <span *ngIf="constraint.constraintTypeId != 1">
+                          {{ constraint.textMessages | translate }}
+                        </span>
+                      </ng-template>
+                    </span>
+                  </ng-container>
+                </ng-container>
+              </ng-template>
+              <div *ngIf="hasErrorMsg!=''"><span class="error-color">{{hasErrorMsg}}</span></div>
+              <p *ngIf="fieldData['invalidField'] == true" [id]="'error_' + fieldData.AttachmentId" style="color: red">
+                <span labelValue key="Required" category="Messages"></span>
+                &nbsp;
+              </p>
+            </nz-form-control>
+            <ng-container *ngIf="fieldData?.attachmentDescription">
+              <div class="row" style="margin-left: 0">
+                <ul>
+                  <li>
+                    <span>
+                      {{ fieldData.attachmentDescription | translate }}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="preview">
+  <app-attachment-preview [loading]="isDownloading" [link]="attachmentPreviewLink" (close)="closePreview()">
+  </app-attachment-preview>
+</div>

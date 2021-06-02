@@ -1,0 +1,10 @@
+<nz-form-item *ngIf="fieldData" [formGroup]="form">   
+    <!-- <nz-form-label> -->
+        <div>
+        <label class="dynamic-control-label" for="{{'checkfield_' + fieldData.entityFieldId + '_' + fieldData.fieldTypeId| trim}}" appFormlabel [data]="fieldData.formSectionFieldName" [id]="'label_'+fieldData.entityFieldId"  [keyId]="fieldData.entityFieldId" [class]="fieldData | required"></label>
+    </div>
+    <!-- </nz-form-label> -->
+    <nz-form-control>
+        <input class="dynamic-control-element" nz-input name="email"  nzErrorTip="" type="text"  [formControlName]="fieldData.formSectionFieldName" [attr.aria-label]="controlName" >
+    </nz-form-control>
+</nz-form-item>

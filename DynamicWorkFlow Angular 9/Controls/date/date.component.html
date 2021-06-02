@@ -1,0 +1,71 @@
+<nz-form-item *ngIf="fieldData" [formGroup]="form">
+    <div>
+        <label class="dynamic-control-label"
+            for="{{'checkfield_' + fieldData.entityFieldId + '_' + fieldData.fieldTypeId| trim}}" appFormlabel
+            [data]="fieldData.formSectionFieldName" [keyId]="fieldData.entityFieldId"
+            [id]="'label_'+fieldData.entityFieldId" [class]="fieldData | required"></label>
+        <span *ngIf="fieldData.instructions" nz-tooltip nzTooltipPlacement="top"
+            [nzTooltipTitle]="fieldData.instructions | translate">
+            &nbsp; <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </span>
+    </div>
+    <nz-form-control *ngIf="formSection.formMode == 2 || fieldData?.isDisable; else elseBlock"
+        [nzErrorTip]="errErrorTpl">
+        <input nz-input id="{{'field_'+fieldData.entityFieldId}}" type="text"
+            class="form-control dynamic-control-element" [value]="fieldData.formSectionFieldValue | date: 'dd/MM/yyyy' "
+            [attr.aria-label]="controlName">
+
+        <ng-template #errErrorTpl let-control>
+            <ng-container *ngFor="let constraint of fieldData['constraints']">
+                <span
+                    *ngIf="control.hasError('required') && constraint.constraintTypeId == 1 && fieldData['invalidField'] != true">
+                    {{constraint.textMessages | translate }}
+                </span>
+                <span *ngIf="!control.hasError() && !control.hasError('required')">
+                    <span *ngIf="constraint.constraintMessages; else textMessages">
+                        {{constraint.constraintMessages | translate }}
+                    </span>
+                    <ng-template #textMessages>
+                        <span *ngIf="constraint.constraintTypeId != 1">
+                            {{constraint.textMessages | translate }}
+                        </span>
+                    </ng-template>
+                </span>
+            </ng-container>
+        </ng-template>
+        <p *ngIf="fieldData['invalidField'] == true" [id]="'error_'+fieldData.entityFieldId" style="color:red">
+            <span labelValue key="Required" category="Messages"></span> &nbsp;
+        </p>
+    </nz-form-control>
+    <ng-template #elseBlock>
+        <!-- *ngIf="formSection.formMode == 1" -->
+        <nz-form-control [nzErrorTip]="errErrorTpl">
+            <nz-date-picker class="dynamic-control-element" id="{{'field_'+fieldData.entityFieldId}}"
+                [attr.aria-label]="controlName" [formControlName]="controlName" [nzPlaceHolder]="datePlaceHolderText"
+                (ngModelChange)="onChange($event)" (focusout)="onFocusout($event)" [nzAllowClear]="false"
+                nzFormat="dd/MM/yyyy"></nz-date-picker>
+
+            <ng-template #errErrorTpl let-control>
+                <ng-container *ngFor="let constraint of fieldData['constraints']">
+                    <span
+                        *ngIf="control.hasError('required') && constraint.constraintTypeId == 1 && fieldData['invalidField'] != true">
+                        {{constraint.textMessages | translate }}
+                    </span>
+                    <span *ngIf="!control.hasError() && !control.hasError('required')">
+                        <span *ngIf="constraint.constraintMessages; else textMessages">
+                            {{constraint.constraintMessages | translate }}
+                        </span>
+                        <ng-template #textMessages>
+                            <span *ngIf="constraint.constraintTypeId != 1">
+                                {{constraint.textMessages | translate }}
+                            </span>
+                        </ng-template>
+                    </span>
+                </ng-container>
+            </ng-template>
+            <p *ngIf="fieldData['invalidField'] == true" [id]="'error_'+fieldData.entityFieldId" style="color:red">
+                <span labelValue key="Required" category="Messages"></span> &nbsp;
+            </p>
+        </nz-form-control>
+    </ng-template>
+</nz-form-item>

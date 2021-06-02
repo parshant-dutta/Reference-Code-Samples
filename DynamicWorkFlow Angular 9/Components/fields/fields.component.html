@@ -1,0 +1,403 @@
+<div class="dynamic-control-section" [ngClass]="{'section-fields': !noBorders}">
+  <ng-template #nodeTemplateRef let-node>
+    <div *ngIf="node" class="row">
+      <ng-container *ngFor="let field of node; last as isLast">
+        <div class="col-lg-12" *ngIf="checkNewLine(field)"></div>
+        <!-- [ngClass]="{'col-lg-12 col-md-12 col-sm-12': (field.fieldTypeId ==7 || field.fieldTypeId == 6 || field.fieldTypeId == 11  || field.fieldTypeId == 4 || field.fieldTypeId == 14),'hidden': checkIfDisabled(field)}" -->
+
+        <div class="col-lg-4 col-md-6 col-sm-6 col-12 parentField {{
+            dynamicClass[field.entityFieldId]
+          }}" [ngClass]="{
+            'hidden ': checkIfDisabled(field),
+            '': setDynamicClass(field)
+          }">
+          <div [ngSwitch]="field.fieldTypeId">
+            <span *ngIf="checkFieldsVisibility(isLast)"></span>
+            <label class="csCheckbox hide" id="{{ 'choosefieldcontainer_' + field.entityFieldId }}">
+              <input type="checkbox" [disabled]="formSectionData?.formMode == 2"
+                id="{{ 'choosefieldcheckbox_' + field.entityFieldId }}" (click)="chooseDate(field, $event)" />
+              <div class="checkmark"></div>
+              <span labelValue key="ChooseItem" category="Labels"></span>
+            </label>
+            <div *ngSwitchCase="'2'">
+              <app-numeric [fieldData]="field" [form]="form" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}">
+              </app-numeric>
+            </div>
+            <div *ngSwitchCase="'3'">
+              <app-date [fieldData]="field" [form]="form" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}" [formSection]="formSectionData" (optionChangeEvent)="onSelectionChange($event)">
+              </app-date>
+            </div>
+            <div *ngSwitchCase="'10'">
+              <app-datetime [fieldData]="field" [form]="form" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}" [formSection]="formSectionData" (optionChangeEvent)="onSelectionChange($event)">
+              </app-datetime>
+            </div>
+            <div *ngSwitchCase="'5'">
+              <div class="field">
+                <app-dropdown [fieldData]="field" [form]="form" [dynamicData]="dynamicData"
+                  [formSection]="formSectionData" controlName="{{
+                    'fieldControl_' +
+                      field.entityFieldId +
+                      '_' +
+                      field.fieldTypeId | trim
+                  }}" (optionChangeEvent)="onSelectionChange($event)">
+                </app-dropdown>
+              </div>
+            </div>
+            <div *ngSwitchCase="'4'">
+              <div class="field">
+                <app-multi-select [formMode]="formSectionData.formMode" [fieldData]="field" [form]="form"
+                  [dynamicData]="dynamicData" controlName="{{
+                    'fieldControl_' +
+                      field.entityFieldId +
+                      '_' +
+                      field.fieldTypeId | trim
+                  }}" (optionChangeEvent)="onSelectionChange($event)">
+                </app-multi-select>
+              </div>
+            </div>
+            <div *ngSwitchCase="'6'">
+              <div class="field">
+                <app-information [form]="form" [fieldData]="field" controlName="{{
+                    'fieldControl_' +
+                      field.entityFieldId +
+                      '_' +
+                      field.fieldTypeId | trim
+                  }}">
+                </app-information>
+              </div>
+            </div>
+            <div *ngSwitchCase="'14'">
+              <div class="field">
+                <app-information [form]="form" [fieldData]="field" controlName="{{
+                    'fieldControl_' +
+                      field.entityFieldId +
+                      '_' +
+                      field.fieldTypeId | trim
+                  }}">
+                </app-information>
+              </div>
+            </div>
+            <div *ngSwitchCase="'8'">
+              <app-boolean [fieldData]="field" [form]="form" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}" (optionChangeEvent)="onSelectionChange($event)">
+              </app-boolean>
+            </div>
+            <div *ngSwitchCase="'12'">
+              <app-map [fieldData]="field" [form]="form" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}">
+              </app-map>
+            </div>
+            <!-- control for terms and condition -->
+            <div *ngSwitchCase="'11'">
+              <app-termsandcondition [formMode]="formSectionData.formMode" [fieldData]="field" [form]="form"
+                controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}">
+              </app-termsandcondition>
+            </div>
+            <div *ngSwitchCase="'13'">
+              <app-textarea [form]="form" [fieldData]="field" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}">
+              </app-textarea>
+            </div>
+
+            <div *ngSwitchCase="'7'">
+              <div class="related-field">
+                <nz-spin [nzSpinning]="isChildrenLookupsLoading">
+                  <div [ngClass]="{ row: field && field.relationType != 'Single' }">
+                    <div class="ant-form-item-control" id="entityFieldId_{{ field.entityFieldId }}" [ngClass]="{
+                      'parent-record-header col-lg-6':
+                        field && field.relationType != 'Single',
+                      'parent-record-header':
+                        field && field.relationType == 'Single'
+                    }">
+                      <div id="entityFieldIdValue_{{ field.formSectionFieldValue }}">
+                        <i nz-icon nzType="check-circle" nzTheme="outline" class="icon-right" *ngIf="
+                          field &&
+                          field.relationType == 'Single' &&
+                          getChildrensToDisplay(field['childrens']) &&
+                          getChildrensToDisplay(field['childrens'])?.length > 0
+                        "></i>
+                        <span class="related-field-title" id="field_{{ field.entityFieldId }}"
+                          [class]="field | required">
+                          {{ field.relationShipNameTranslation | translate }}
+                          <span labelValue key="PickedSuccessfully" category="Labels" *ngIf="
+                            field &&
+                            field.relationType == 'Single' &&
+                            getChildrensToDisplay(field['childrens']) &&
+                            getChildrensToDisplay(field['childrens'])?.length >
+                              0
+                          "></span>
+                        </span>
+                        <div *ngIf="
+                          formSectionData.formMode == 1 &&
+                          field.relationType != 'Single' &&
+                          field.entityRelationships &&
+                          field.entityRelationships[0]
+                            .multipleChildRelationShip == 'One to Many' &&
+                          field.canAdd
+                        ">
+                          <input id="uploadfromexcel_{{ field.entityFieldId }}" *ngIf="
+                            field &&
+                            field.relationType != 'Single' &&
+                            field.fieldTemplates
+                          " type="file" (change)="uploadExcel(field, $event)" />
+                        </div>
+
+                        <!-- <label appFormlabel [data]="field.formSectionFieldName" [keyId]="field.entityFieldId"
+                      for="{{'checkfield_' + field.entityFieldId + '_' + field.fieldTypeId| trim}}"
+                      [class]="field | required" class="related-field-title" [id]="'label_'+field.entityFieldId">
+                      </label> -->
+
+                        <span class="toolName" *ngIf="field.instructions" nz-tooltip nzTooltipPlacement="top"
+                          [nzTooltipTitle]="field.instructions | translate">
+                          &nbsp;
+                          <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+                        </span>
+
+                        <div *ngIf="
+                          field &&
+                          field.relationType == 'Single' &&
+                          getChildrensToDisplay(field['childrens']) &&
+                          getChildrensToDisplay(field['childrens'])?.length > 0
+                        " class="single-relation-buttons">
+                          <button *ngIf="formSectionData.formMode == 1" nz-button class="ant-btn-secondary"
+                            nzType="secondary" (click)="showChildrenFieldModal(field, 'add')">
+                            <span *ngIf="
+                              getChildrensToDisplay(field['childrens']) &&
+                              getChildrensToDisplay(field['childrens'])
+                                ?.length > 0
+                            " labelValue key="ChooseAnother" category="Button"></span>
+                            &nbsp;{{ field.relationShipNameTranslation | translate }}
+                          </button>
+                          <button nz-button class="ant-btn-gray" *ngIf="formSectionData.formMode == 1"
+                            (click)="removePickedRecord(field)">
+                            <span labelValue key="Remove" category="Button"></span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div *ngIf="
+                        field.Settings &&
+                        (field.Settings | parse)?.Min > 0 &&
+                        formSectionData.formMode == 1
+                      " >
+                        <p class="field-required ng-invalid">
+                          <span [isLoaded]="isSpinning" labelValue key="AddMinimum" category="Labels"></span>
+                          {{ (field.Settings | parse)?.Min }}
+                          <span>
+                            <!-- {{ formSectionData.formName | translate }} -->
+                            {{ field.relationShipNameTranslation | translate }}
+
+                          </span>
+                        </p>
+                        <p  class="ng-invalid" *ngIf="
+                          isFormTouched &&
+                          getChildrensToDisplay(field['childrens'])?.length <
+                            (field.Settings | parse)?.Min
+                        " style="color: red">
+                          <span labelValue key="Required" category="Messages"></span>
+                        </p>
+                      </div>
+                      <!-- <strong><span [id]="'min_'+field.entityFieldId"></span></strong>&nbsp;{{formSectionData.formName | translate}}&nbsp; -->
+                      <p *ngIf="field['invalidField'] == true" class="ng-invalid" [id]="'error_' + field.entityFieldId" style="color: red">
+                        <span labelValue key="Required" category="Messages"></span>
+                        &nbsp;
+                      </p>
+                      <ng-container *ngFor="let constraint of field['constraints']">
+                        <ng-container *ngIf="
+                          constraint.constraintName == 'Required' &&
+                          field.formSectionFieldValue == ''
+                        ">
+                          <br />
+                          <span *ngIf="
+                            getChildrensToDisplay(field['childrens'])?.length <
+                            1
+                          " style="color: red">
+                            {{ constraint.textMessages | translate }}
+                          </span>
+                        </ng-container>
+                      </ng-container>
+                    </div>
+                    <div class="col-lg-6" *ngIf="
+                      formSectionData.formMode == 1 &&
+                      field.relationType != 'Single' &&
+                      field.entityRelationships &&
+                      field.entityRelationships[0].multipleChildRelationShip ==
+                        'One to Many'
+                    ">
+                      <div class="thumb-btn" *ngIf="field.canAdd">
+                        <!--  -->
+                        <ng-container *ngIf="field.fieldTemplates">
+                          <button *ngFor="let template of field.fieldTemplates" nz-button class="ant-btn-gray" (click)="
+                            downloadTemplate(
+                              template.attachmentTemplateId,
+                              'download'
+                            )
+                          " [nzLoading]="
+                            isDownloading &&
+                            selectedTemplateId == template.attachmentTemplateId
+                          ">
+                            <i nz-icon nzType="download" class="text-white"></i>
+                            <span>
+                              {{
+                              template.attachmentTemplateNameTranslations
+                              | translate
+                              }}
+                            </span>
+                          </button>
+                        </ng-container>
+                        <button nz-button nzType="primary" (click)="showChildrenFieldModal(field, 'add')">
+                          <i nz-icon nzType="plus" class="text-white"></i>
+                          <span>
+                            {{ field.relationShipNameTranslation | translate }}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngIf="
+                    field &&
+                    field.relationType != 'Single' &&
+                    getChildrenLookups(field.formSectionFieldid, field) &&
+                    field['childrenLookupsData']
+                  ">
+                    <app-reference [field]="field" (editRowFields)="editRowFields($event, field)"
+                      (removeRowFields)="remove($event)" [formSection]="formSectionData"></app-reference>
+                  </div>
+                </nz-spin>
+
+                <div *ngIf="field && field.relationType == 'Single'" class="child-fields-container">
+                  <div [ngClass]="
+                      getChildrensToDisplay(field['childrens'])?.length > 0 ||
+                      formSectionData.formMode == 1
+                        ? 'child-fields'
+                        : 'child-fields'
+                    ">
+                    <div style="text-align: center">
+                      <div *ngIf="
+                          getChildrensToDisplay(field['childrens']) &&
+                          getChildrensToDisplay(field['childrens'])?.length <
+                            1 &&
+                          formSectionData.formMode == 1
+                        ">
+                        <span labelValue key="DoYouHave" category="Labels">
+                        </span>
+                        {{ field.relationShipNameTranslation | translate }} ?
+
+                        <nz-empty [nzNotFoundContent]="contentTpl" style="padding: 10px 35px">
+                          <ng-template #contentTpl>
+                            <button nz-button nzType="primary" (click)="showChildrenFieldModal(field, 'add')">
+                              <span *ngIf="
+                                  getChildrensToDisplay(field['childrens']) &&
+                                  getChildrensToDisplay(field['childrens'])
+                                    ?.length < 1
+                                " labelValue key="Choose" category="Button">
+                              </span>&nbsp;{{
+                              field.relationShipNameTranslation | translate
+                              }}
+                            </button>
+                          </ng-template>
+                        </nz-empty>
+                      </div>
+                      <h4 *ngIf="
+                          getChildrensToDisplay(field['childrens']) &&
+                          getChildrensToDisplay(field['childrens'])?.length <
+                            1 &&
+                          formSectionData.formMode == 2
+                        " style="margin-bottom: 20px">
+                        <span style="padding: 5px">
+                          {{ field.relationShipNameTranslation | translate }}
+                          <span labelValue key="NotPicked" category="Labels"></span>
+                        </span>
+                      </h4>
+                    </div>
+                    <div *ngIf="
+                        getChildrensToDisplay(field['childrens']) &&
+                        getChildrensToDisplay(field['childrens'])?.length > 0
+                      ">
+                      <app-single-selected-fields [data]="field" [lookupData]="dynamicData"
+                        [formSection]="formSectionData" [form]="form" [isLoaded]="isSpinning">
+                      </app-single-selected-fields>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngSwitchCase="'15'">
+              <app-payment-code [form]="form" [fieldData]="field" [formSection]="formSectionData" controlName="{{
+                'fieldControl_' +
+                  field.entityFieldId +
+                  '_' +
+                  field.fieldTypeId | trim
+              }}">
+              </app-payment-code>
+            </div>
+
+            <div *ngSwitchDefault>
+              <app-textbox [form]="form" [fieldData]="field" controlName="{{
+                  'fieldControl_' +
+                    field.entityFieldId +
+                    '_' +
+                    field.fieldTypeId | trim
+                }}">
+              </app-textbox>
+            </div>
+            <div class="spinloader hide" [id]="'spin_' + field.entityFieldId">
+              <nz-spin [nzSpinning]="true"> </nz-spin>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </ng-template>
+  <div>
+    <ng-template [ngTemplateOutlet]="nodeTemplateRef" [ngTemplateOutletContext]="{ $implicit: fieldData }">
+    </ng-template>
+    <div *ngIf="attachments" class="attachmentSection">
+      <div *ngFor="let field of attachments" [ngClass]="{ hidden: checkIfFileDisabled(field) }" class="attachments"
+        id="formSectionAttachmentId_{{ field.FormSectionAttachmentId }}">
+        <div style="width: 100%; z-index: 7000">
+          <app-file-upload [fieldData]="field" [sectionData]="formSectionData" [form]="form"
+            [applicationStageId]="applicationStageId" controlName="{{
+              'fieldControl_' +
+                field.FormSectionAttachmentId +
+                '_' +
+                field.AttachmentTypeId | trim
+            }}">
+          </app-file-upload>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

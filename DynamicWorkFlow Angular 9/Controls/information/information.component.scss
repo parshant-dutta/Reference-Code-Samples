@@ -1,0 +1,33 @@
+.info {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 14px;
+    font-variant: tabular-nums;
+    line-height: 1.5715;
+    list-style: none;
+    font-feature-settings: 'tnum';
+    position: relative;
+    word-wrap: break-word;
+    border-radius: 2px;
+}
+i{font-size: 21px; padding: 0 5px 0 5px;}
+
+.warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    border: 1px solid #ffc107;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 14px;
+    font-variant: tabular-nums;
+    line-height: 1.5715;
+    list-style: none;
+    font-feature-settings: 'tnum';
+    position: relative;
+    padding: 8px 15px 8px 8px;
+    word-wrap: break-word;
+    border-radius: 2px;
+}

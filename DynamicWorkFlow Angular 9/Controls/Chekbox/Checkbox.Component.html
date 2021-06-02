@@ -1,0 +1,39 @@
+<nz-form-item *ngIf="fieldData" [formGroup]="form">
+
+    <div>
+        <label class="dynamic-control-label" for="{{'checkfield_' + fieldData.entityFieldId + '_' + fieldData.fieldTypeId| trim}}" appFormlabel
+            [data]="fieldData.formSectionFieldName" [id]="'label_'+fieldData.entityFieldId"
+            [keyId]="fieldData.entityFieldId" [class]="fieldData | required"></label>
+        <span *ngIf="fieldData.instructions" nz-tooltip nzTooltipPlacement="top"
+            [nzTooltipTitle]="fieldData.instructions | translate">
+            &nbsp; <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </span>
+    </div>
+
+    <nz-form-control [nzErrorTip]="errErrorTpl">
+        <label class="dynamic-control-element" nz-checkbox [formControlName]="controlName" [attr.aria-label]="controlName"
+            (ngModelChange)="updateFieldValue($event)">{{fieldData.formSectionFieldName}}</label>
+
+        <ng-template #errErrorTpl let-control>
+            <ng-container *ngFor="let constraint of fieldData['constraints']">
+                <span *ngIf="control.hasError('required') && constraint.constraintTypeId == 1 && fieldData['invalidField'] != true">
+                    {{constraint.textMessages | translate }}
+                </span>
+                <span *ngIf="!control.hasError() && !control.hasError('required')">
+                    <span *ngIf="constraint.constraintMessages; else textMessages">
+                        {{constraint.constraintMessages | translate }}
+                    </span>
+                    <ng-template #textMessages>
+                       <span *ngIf="constraint.constraintTypeId != 1">
+                           {{constraint.textMessages | translate }}
+                        </span>
+                    </ng-template>
+                </span>
+            </ng-container>
+        </ng-template>
+        <p *ngIf="fieldData['invalidField'] == true" [id]="'error_'+fieldData.entityFieldId" style="color:red">
+            <span labelValue key="Required" category="Messages"></span> &nbsp;
+        </p>
+    </nz-form-control>
+
+</nz-form-item>

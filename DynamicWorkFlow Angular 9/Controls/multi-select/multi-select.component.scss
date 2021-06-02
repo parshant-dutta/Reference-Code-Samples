@@ -1,0 +1,45 @@
+nz-select {
+    width: 100%;
+  }
+ ::ng-deep .mat-select-panel-wrap{
+    background: #f8f8f8 !important;
+  }
+  ::ng-deep .mat-select-panel{
+    
+    background: #f8f8f8 !important;
+  }
+  
+  ::ng-deep .mat-form-field-flex {
+    padding: 0px !important;
+  }
+
+  ::ng-deep .mat-form-field-flex {
+    padding: 4px 11px !important;
+  }
+
+  mat-form-field {
+    width: 100% !important;
+    border: 1px solid #cacaca;
+  }
+
+  ::ng-deep .mat-select-arrow-wrapper {
+    vertical-align: bottom !important;
+}
+
+::ng-deep .mat-form-field-disabled {
+  background-color: #f5f5f5;
+  pointer-events: none;
+}
+
+::ng-deep .mat-standard-chip {
+  margin: 4px !important;
+  padding: 13px 11px !important;
+  border: 1px solid #cacaca !important;
+  background-color: #f5f5f5 !important;
+  min-height: auto!important;
+}
+
+
+::ng-deep .field {
+  margin: 0 0 20px 0;
+}

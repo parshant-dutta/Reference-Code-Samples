@@ -1,0 +1,56 @@
+<div *ngIf="fieldData" [formGroup]="form">
+    <div>
+        <label class="dynamic-control-label" for="{{'checkfield_' + fieldData.entityFieldId + '_' + fieldData.fieldTypeId| trim}}" appFormlabel
+            [data]="fieldData.formSectionFieldName" [keyId]="fieldData.entityFieldId"
+            [id]="'label_'+fieldData.entityFieldId" [class]="fieldData | required"></label>
+        <span *ngIf="fieldData.instructions" nz-tooltip nzTooltipPlacement="top"
+            [nzTooltipTitle]="fieldData.instructions | translate">
+            &nbsp; <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+        </span>
+    </div>
+    <div *ngIf="controlName">
+        <nz-form-control [nzErrorTip]="errErrorTpl">
+            <input type='hidden' id="{{'field_'+fieldData.entityFieldId}}" [attr.aria-label]="controlName"
+                value="{{fieldData.formSectionFieldValue}}">
+            <mat-form-field appearance="fill">
+                <mat-select class="dynamic-control-element" #dropdownControl [formControlName]="controlName" multiple [attr.aria-label]="controlName"
+                    id="{{'fieldDropdown_'+fieldData.entityFieldId}}"
+                    (selectionChange)="optionChange(dropdownControl.value, fieldData.entityFieldId)"
+                    (focusout)="onFocusout()" [disabled]="isDisabled">
+                    <mat-select-trigger>
+                        <mat-chip-list>
+                            <mat-chip *ngFor="let item of getSelectedValues(controlName, data)">
+                                {{ item.lookupFieldValue }}
+                            </mat-chip>
+                        </mat-chip-list>
+                    </mat-select-trigger>
+
+                    <mat-option [disabled]="isDisabled" *ngFor="let ddldata of data" [value]="ddldata.lookupValueId">
+                        {{ddldata.lookupValue}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+        </nz-form-control>
+        <ng-template #errErrorTpl let-control>
+            <ng-container *ngFor="let constraint of fieldData['constraints']">
+                <span *ngIf="control.hasError('required') && constraint.constraintTypeId == 1 && fieldData['invalidField'] != true">
+                    {{constraint.textMessages | translate }}
+                </span>
+                <span *ngIf="!control.hasError() && !control.hasError('required')">
+                    <span *ngIf="constraint.constraintMessages; else textMessages">
+                        {{constraint.constraintMessages | translate }}
+                    </span>
+                    <ng-template #textMessages>
+                       <span *ngIf="constraint.constraintTypeId != 1">
+                           {{constraint.textMessages | translate }}
+                        </span>
+                    </ng-template>
+                </span>
+            </ng-container>
+        </ng-template>
+
+        <p *ngIf="fieldData['invalidField'] == true" [id]="'error_'+fieldData.entityFieldId" style="color:red">
+            <span labelValue key="Required" category="Messages"></span> &nbsp;
+        </p>
+    </div>
+</div>

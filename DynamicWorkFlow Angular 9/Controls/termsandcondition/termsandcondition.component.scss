@@ -1,0 +1,38 @@
+.ant-form-item{
+    .termsContent{
+        margin:0px;
+        span{
+         font-size:20px;
+         font-weight:500;
+         color:#b68934;
+         display:block;
+         margin:0 0 20px 0;
+        }
+        label{
+            margin: 0px;
+            color: #222;
+            font-weight: 400;
+            position: relative;
+            i{
+                display: inline-block;
+                padding: 0 5px 0 0;
+                position: absolute;
+                left: -20px;
+                top: 5px;
+            }
+            div{
+                display: inline-block;
+                padding: 0 7px 0 0;
+                position: relative;
+                top: -3px;
+          }
+        }
+    }
+}
+.checkicon {
+    padding-top: 5px;
+    color: #b68934;
+}
+.ant-checkbox-wrapper{
+    font-weight: bold;
+}
