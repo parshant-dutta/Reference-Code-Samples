@@ -28,7 +28,7 @@
     "angular-calendar": "^0.28.26",
     "date-fns": "^2.22.1",
     "jwt-decode": "^3.1.2",
-    "moment": "^2.29.1",
+    "moment": "^2.29.4",
     "ng2-tooltip-directive": "^2.9.22",
     "ngx-capture": "^0.10.2",
     "ngx-dropzone": "^3.0.0",
