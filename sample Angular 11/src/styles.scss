@@ -1,0 +1,39 @@
+@import './assets/scss/variables.scss';
+@import './assets/scss/common-style.scss';
+@import './assets/scss/media-queries.scss';
+@import './assets/scss/fonts.scss';
+@import './assets/scss/mixins/typography.scss';
+@import './assets/scss/material/index.scss';
+@import "../node_modules/angular-calendar/scss/angular-calendar.scss";
+@import '~perfect-scrollbar/css/perfect-scrollbar.css';
+@import './assets/scss/authentication.scss';
+@import './assets/scss/form.scss';
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif;}
+
+h1 {
+  @include pageTitle;
+}
+
+h2 {
+  @include pageTitleSecondary;
+}
+
+h1, h2, h3, h4, h5 {
+  font-weight: 400;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+.cal-day-view .cal-hour-segment.cal-after-hour-start .cal-time {
+  display: block;
+}
