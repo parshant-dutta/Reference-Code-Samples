@@ -1,0 +1,94 @@
+Angular 17 interceptor
+
+import { HttpHandlerFn, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
+import { Observable, throwError, timer, Subscription } from 'rxjs';
+import { catchError, switchMap, finalize, tap } from 'rxjs/operators';
+import { inject } from '@angular/core';
+import { MessageService } from 'primeng/api';
+import { AuthService } from '../../authentication/components/login/services/auth.service';
+import { EventService } from '../../shared/services/event.service';
+import { Router } from '@angular/router';
+
+export const httpHandlerInterceptor: HttpInterceptorFn = (req, next) => {
+  const authService = inject(AuthService);
+  const serviceEvent = inject(EventService);
+  const messageService = inject(MessageService);
+  const router = inject(Router)
+
+  const spinner = req.headers.get('spinner') || 'true';
+
+  const addAuthToken = (request: HttpRequest<any>, token: string): HttpRequest<any> => {
+    return request.clone({
+      setHeaders: {
+        'x-api-key': ` ${token}`
+      }
+    });
+  };
+  let authToken: any = sessionStorage.getItem('token') || sessionStorage.getItem('refreshToken');
+  let authReq = addAuthToken(req, authToken);
+
+  if (JSON.parse(spinner)) {
+    serviceEvent.loaderService.next(true);
+  }
+  
+  const handle401Error = (request: HttpRequest<any>, next: HttpHandlerFn): Observable<HttpEvent<any>> => {
+    return authService.refreshToken().pipe(
+      switchMap((response: any) => {
+        const newAuthToken = response.accessToken;
+        sessionStorage.setItem('token', newAuthToken);
+        return next(addAuthToken(request, newAuthToken));
+      }),
+      catchError((err: any) => {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('refreshToken');
+        router.navigate(['/login']);
+        return throwError(() => err);
+      })
+    )
+  };
+ 
+ const isLoginOrRefreshRequest = (url: any): boolean => {
+    if (!url) return false;
+    const urlParts = url.split('/');
+    const endpoint = urlParts[urlParts.length - 1];
+    return endpoint === 'login' || endpoint === 'refresh';
+  }
+
+  return next(authReq).pipe(
+    tap({
+      next: (res) =>{
+        if (res instanceof HttpResponse) {
+        }
+      } ,
+      error: (err: any) => {
+        if (err instanceof HttpErrorResponse) {
+          if (JSON.parse(spinner)) {
+            serviceEvent.loaderService.next(false);
+          }
+          if (err.status === 401 && !isLoginOrRefreshRequest(err.url)) {
+            console.error('Unauthorized request:', err);
+          }
+          else {
+            messageService.add({ severity: 'error', summary: 'Error', detail: err.error.message || err.error.error });
+            console.error('HTTP error:', err);
+          }
+        } else {
+          console.error('An error occurred:', err);
+        }
+      },
+    }),
+    catchError((err: any) => {
+      if (err instanceof HttpErrorResponse && err.status === 401 && !isLoginOrRefreshRequest(err.url)) {
+        return handle401Error(req, next);
+      }
+      return throwError(() => err);
+    }),
+    finalize(() => {
+      console.log('[finalize] Called');
+      if (JSON.parse(spinner)) {
+        serviceEvent.loaderService.next(false);
+      }
+    })
+  );
+};

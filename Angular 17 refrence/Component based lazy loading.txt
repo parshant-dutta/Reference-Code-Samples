@@ -1,0 +1,77 @@
+component based lazy loading
+
+export const routes: Routes = [
+    {
+        path: '',
+        component: LayoutComponent,
+        canActivate: [() => inject(LoginService).isLoggedIn()],
+        children: [
+            {path: '', redirectTo: 'campus', pathMatch: 'full' },
+            {
+                path: 'campus',
+                loadComponent: () => import('./features/components/campus/campus.component').then(c => c.CampusComponent),
+                data: {
+                    title: 'Campus'
+                  },
+            },
+            {
+                path: 'add-device',
+                loadComponent: () => import('./features/components/add-device/add-device.component').then(c => c.AddDeviceComponent),
+                data: {
+                    title: 'Devices'
+                  },
+            },
+                    {
+                        path: 'add-device-type',
+                        loadComponent: () => import('./features/components/add-device/components/add-device-type/add-device-type.component').then(c => c.AddDeviceTypeComponent),
+                        data: {
+                            title: 'device-type'
+                          },
+                    },
+            {
+                path: 'settings',
+                loadComponent: () => import('./features/components/settings/settings.component').then(c => c.SettingsComponent),
+                data: {
+                    title: 'settings'
+                  },
+                children: [
+                    {
+                        path: 'facilities',
+                        loadComponent: () => import('./features/components/settings/components/facilities/facilities.component').then(c => c.FacilitiesComponent),
+                        data: {
+                            title: 'settings'
+                          },
+                    },
+                    {
+                        path: 'markers',
+                        loadComponent: () => import('./features/components/settings/components/marker/marker.component').then(c => c.MarkerComponent),
+                        data: {
+                            title: 'settings'
+                          },
+                    },
+                    {
+                        path: 'gateways',
+                        loadComponent: () => import('./features/components/settings/components/gateways/gateways.component').then(c => c.GatewaysComponent),
+                        data: {
+                            title: 'settings'
+                          },
+                    },
+                    {
+                        path:'groups',
+                        loadComponent:() => import('./features/components/settings/components/groups/groups.component').then(c => c.GroupsComponent),
+                        data:{
+                            title: 'settings'
+
+                        }
+                    }
+
+
+                ]
+            }
+        ]
+    },
+    {
+        path: 'login',
+        loadComponent: () => import('./authentication/components/login/login.component').then(c => c.LoginComponent)
+    }
+];

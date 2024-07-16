@@ -1,0 +1,248 @@
+leaflet map image overlay and custom control
+
+ngAfterViewInit() {
+    this.googleOriginal = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+    this.map.addLayer(this.googleOriginal);
+
+    this.map.zoomControl.setPosition('bottomleft');
+
+    (L.control as any).fullscreen({
+      position: 'bottomleft', // change the position of the button can be topleft, topright, bottomright or bottomleft, default topleft
+      title: 'Show me the fullscreen !', // change the title of the button, default Full Screen
+      titleCancel: 'Exit fullscreen mode', // change the title of the button when fullscreen is on, default Exit Full Screen
+      content: null, // change the content of the button, can be HTML, default null
+      forceSeparateButton: true, // force separate button to detach from zoom buttons, default false
+      forcePseudoFullscreen: true, // force use of pseudo full screen even if full screen API is available, default false
+      fullscreenElement: false // Dom element to render in full screen, false by default, fallback to map._container
+    }).addTo(this.map);
+
+    if (this.screenView !== 'facility') {
+      const customControl = L.Control.extend({
+        options: {
+          position: 'bottomright'
+        },
+
+        onAdd: (map: any) => {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+          container.style.backgroundColor = 'white';
+          container.style.padding = '5px 10px';
+          let icon = 'pi-chevron-down'
+          container.innerHTML = '<i class="pi pi-chevron-down"></i>';
+
+          container.onclick = () => {
+            this.isHideTableView.emit();
+            icon = icon === 'pi-chevron-down' ? 'pi-chevron-up' : 'pi-chevron-down';
+            container.innerHTML = `<i class="pi ${icon}"></i>`;
+            setTimeout(() => {
+              this.map.invalidateSize();
+            }, 400);
+          }
+          return container;
+        }
+      });
+
+      this.customGatewayDragDropControl = L.Control.extend({
+        options: {
+          position: 'topright'
+        },
+
+        onAdd: (map: any) => {
+          this.gatewayContainer = L.DomUtil.create('div', 'enableGateway');
+          this.gatewayContainer.style.padding = '5px 10px';
+          this.gatewayContainer.style.display = 'none';
+
+          // Create the toggle switch with tooltip container
+          let tooltipContainer: any = document.createElement('div');
+          tooltipContainer.classList.add('tooltip-container');
+
+          let toggleSwitch: any = document.createElement('label');
+          toggleSwitch.classList.add('switch');
+          toggleSwitch.innerHTML = `
+              <input type="checkbox">
+              <span class="slider"></span>
+          `;
+
+          // Add the toggle switch to the tooltip container
+          tooltipContainer.appendChild(toggleSwitch);
+
+          // Create the tooltip text
+          let tooltipText: any = document.createElement('div');
+          tooltipText.classList.add('tooltip-text');
+          tooltipText.innerText = 'Enable gateways drag';
+
+          // Add the tooltip text to the container
+          tooltipContainer.appendChild(tooltipText);
+
+          // Add the tooltip container to the gateway container
+          this.gatewayContainer.appendChild(tooltipContainer);
+
+          // Handle the toggle switch change event
+          toggleSwitch.querySelector('input').onchange = (event: any) => {
+            const isChecked = event.target.checked;
+
+            this.layers.forEach((z: any) => {
+              if (this.gateways.includes(z)) {
+                if (isChecked) {
+                  z.dragging.enable();
+                  z.options.draggable = true;
+                } else {
+                  z.dragging.disable();
+                  z.options.draggable = false;
+                }
+              }
+            });
+
+            tooltipText.innerText = isChecked ? 'Disable gateways drag' : 'Enable gateways drag';
+          };
+
+          return this.gatewayContainer;
+        }
+
+
+      });
+
+      const customTreeControl = L.Control.extend({
+        options: {
+          position: 'topleft'
+        },
+
+        onAdd: (map: any) => {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control treeControl');
+          container.style.backgroundColor = 'white';
+          container.style.padding = '5px 7px';
+          let icon = 'pi-chevron-left'
+          container.innerHTML = `<i class="pi ${icon}"></i>`;
+
+          container.onclick = () => {
+            this.isHideTreeView.emit();
+            icon = icon === 'pi-chevron-right' ? 'pi-chevron-left' : 'pi-chevron-right';
+            container.innerHTML = `<i class="pi ${icon}"></i>`;
+            setTimeout(() => {
+              this.map.invalidateSize();
+            }, 400);
+          }
+          return container;
+        }
+      });
+
+      const customGroupControl = L.Control.extend({
+        options: {
+          position: 'topleft'
+        },
+
+        onAdd: (map: any) => {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control treeControl');
+          container.style.backgroundColor = 'white';
+          container.style.padding = '5px 7px';
+          let icon = 'pi-angle-double-left'
+          container.innerHTML = `<i class="pi ${icon}"></i>`;
+
+          container.onclick = () => {
+            this.isHideGroupView.emit();
+            icon = icon === 'pi-angle-double-right' ? 'pi-angle-double-left' : 'pi-angle-double-right';
+            container.innerHTML = `<i class="pi ${icon}"></i>`;
+            setTimeout(() => {
+              this.map.invalidateSize();
+            }, 400);
+          }
+          return container;
+        }
+      });
+
+      const resetMapControl = L.Control.extend({
+        options: {
+          position: 'bottomleft'
+        },
+
+        onAdd: (map: any) => {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control treeControl');
+          container.style.backgroundColor = 'white';
+          container.style.padding = '5px 7px';
+          let icon = 'pi-chevron-left'
+          container.innerHTML = `<i class="pi pi-undo"></i>`;
+
+          container.onclick = () => {
+            this.resetMap.emit();
+            this.map.flyTo([51.506, -0.09], 3, this.zoomAnimation);
+            // icon = icon === 'pi-chevron-right' ? 'pi-chevron-left' : 'pi-chevron-right';
+            // container.innerHTML = `<i class="pi ${icon}"></i>`;
+          }
+
+          return container;
+        }
+      });
+
+      this.map.addControl(new customControl());
+      this.map.addControl(new customGroupControl());
+      this.map.addControl(new customTreeControl());
+      this.map.addControl(new resetMapControl());
+      this.map.addControl(new this.customGatewayDragDropControl());
+    }
+
+  }
+
+ createMarker(markerData: any): L.Marker {
+    const { coordinates, popupContent, iconUrl, draggable, gatewayDetail } = markerData;
+    const draggableMarker = marker(coordinates, {
+      draggable: draggable,
+      icon: iconUrl ? icon({
+        iconUrl: iconUrl,
+        iconSize: [25, 41],
+        iconAnchor: [10, 41],
+        popupAnchor: [2, -40],
+        shadowUrl: 'https://unpkg.com/leaflet@1.4.0/dist/images/marker-shadow.png'
+      }) : undefined
+    }).bindPopup(popupContent);
+
+    draggableMarker.on('dragend', (event) => {
+      this.onMapDragEnd(event, gatewayDetail, draggableMarker);
+      // Handle drag start event
+    });
+    return draggableMarker;
+
+  }
+
+addOverlayImage(imagePath: string, dx: number, dy: number) {
+    this.imageOverlay = null
+    const mapSize = this.map.getSize();
+    const imageBounds: any = [
+      [0, 0], // Southwest corner
+      [dy, dx] // Northeast corner
+    ];
+
+    const imageUrl = imagePath;
+
+    // Remove any existing layers
+    this.map.eachLayer((layer) => {
+      if (layer !== this.imageOverlay) {
+        this.map.removeLayer(layer);
+      }
+    });
+
+    // Add image overlay to the map
+    if (this.imageOverlay) {
+      this.imageOverlay.setBounds(imageBounds);
+      this.imageOverlay.setUrl(imageUrl);
+    } else {
+      this.imageOverlay = L.imageOverlay(imageUrl, imageBounds).addTo(this.map);
+    }
+
+    // Fit the map view to the image bounds
+    this.map.fitBounds(imageBounds);
+
+    this.devicesList.data?.forEach((device: any) => {
+      if (device.linked) {
+        const latLng = {
+          lat: device.device.dx_position,
+          lng: device.device.dy_position
+        }
+        // this.registeredDevices.push(device);
+        this.toCreateTheMarkerPoints(latLng, device.device);
+
+      }
+    });
+
+  }

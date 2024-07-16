@@ -1,0 +1,519 @@
+import { Component, ViewChild, viewChild, viewChildren } from '@angular/core';
+import { MapViewComponent } from '../../../shared/map-view/map-view.component';
+import { FacilityTreeComponent } from '../../../shared/facility-tree/facility-tree.component';
+import { TableComponent } from '../../../shared/ui-components/table/table.component';
+import { allFacilityDetails, facilities } from '../settings/components/facilities/facilityModels/facilityModels';
+import { CampusService } from './services/campus.service';
+import { Device } from '../../../shared/ui-components/devices-menu/models/device-model';
+import { WebSocketService } from '../../../core/services/web-socket.service';
+import { SharedModule } from '../../../shared/shared.module';
+import { DeviceSummary, TableConfig } from './models/campus.model';
+import { GoogleMapComponent } from '../../../shared/google-map/google-map.component';
+import { GroupsService } from '../settings/components/groups/services/groups.service';
+import { HeadersObj } from '../../../shared/constants/constants';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import moment from 'moment';
+import { DeviceListFilterComponent } from '../../../shared/ui-components/device-list-filter/device-list-filter.component';
+import { GroupFilterComponent } from '../../../shared/ui-components/group-filter/group-filter.component';
+import { DevicePenalComponent } from '../../../shared/ui-components/device-penal/device-penal.component';
+
+const components = [
+  MapViewComponent,
+  FacilityTreeComponent,
+  TableComponent,
+  SharedModule,
+  GoogleMapComponent,
+  CommonModule,
+  OverlayPanelModule,
+  GroupFilterComponent,
+  DevicePenalComponent,
+  FormsModule]
+@Component({
+  selector: 'app-campus',
+  standalone: true,
+  imports: [components, DeviceListFilterComponent],
+  templateUrl: './campus.component.html',
+  styleUrl: './campus.component.scss'
+})
+export class CampusComponent {
+  @ViewChild(FacilityTreeComponent) treeView!: FacilityTreeComponent;
+  @ViewChild(GroupFilterComponent) groupComp!: GroupFilterComponent;
+  @ViewChild(DevicePenalComponent) deviceListComp!: DevicePenalComponent
+  facilityResponse: any;
+  selectedTreeNode: any;
+  selectedFloorDevices: Device[] = [];
+  tableConfig: TableConfig | undefined;
+  hideFacilityTree: boolean = false;
+  isTableView: boolean = true;
+  mainResponse: facilities[] = [];
+  groupsConfig: any;
+  showList!: boolean[];
+  selectedItems!: any
+  groupsConfigFilter: any;
+  hideGroupTree: boolean = false;
+  devicesList: any = [];
+  deviceFilterList: any = [];
+
+  highlightDeviceItem: any
+  activeDeviceList: any = [];
+  selectedGroupId: any;
+  selectedFlorId: any;
+  selectedFacilityId: any;
+  selectedFloorId: any;
+  selectedBuildingId: any;
+  selectedPlatformType: any;
+  highlightMarker: any;
+  clearTimeOut!: NodeJS.Timeout;
+  devicePenalList: any = [];
+
+  constructor(private campusService: CampusService,
+    private socketService: WebSocketService,
+    private groupsService: GroupsService
+  ) {
+  }
+
+  getAllFacilitiesDetail() {
+    this.campusService.getFacilitiesCampus().subscribe((res: allFacilityDetails) => {
+      this.modification(res.data, 'facility');
+      this.facilityResponse = res.data;
+      this.facilityResponse = [{
+        label: "Level",
+        children: this.facilityResponse
+      }];
+      this.mainResponse = res.data;
+      this.selectedTreeNode = res.data
+    })
+  }
+
+  ngOnInit() {
+    this.getAllFacilitiesDetail();
+    this.getDeviceDetails();
+    this.getGroupsFilters();
+    this.getAllDevices();
+  }
+
+  getAllDevices() {
+
+    const calculateBatteryPercentage = (voltage: any) => {
+      const levels = [
+        3350, 3381, 3444, 3475, 3494, 3520, 3537, 3551, 3568, 3589, 3627,
+        3675, 3725, 3775, 3829, 3876, 3928, 3981, 4035, 4090, 4152,
+      ];
+      let batteryLevel = levels.findIndex((level) => voltage <= level) * 5;
+      if (voltage <= levels[0]) batteryLevel = 0;
+      if (voltage >= levels[20]) batteryLevel = 100;
+      return batteryLevel;
+    };
+
+    const payload = {
+      "facilityId": this.selectedFacilityId,
+      "buildingId": this.selectedBuildingId,
+      "floorId": this.selectedFloorId,
+      "groupId": this.selectedGroupId,
+      "platform": this.selectedPlatformType
+    }
+    this.campusService.getAllDevices(payload).subscribe((res: any) => {
+      this.deviceFilterList = [];
+      this.devicesList = res.data;
+      this.devicesList.forEach((asset: any) => {
+        this.deviceFilterList.push({ "_id": asset?.id || asset?.vehicle_id, "value": asset?.name || asset?.title })
+        // this.checkAssetStatus(asset);
+        if (asset.platform == 'nova') {
+          const batteryLevel = asset.voltsBackup
+            ? calculateBatteryPercentage(asset.voltsBackup * 1000)
+            : null;
+          asset['batteryLevel'] = batteryLevel + '%';
+          asset['calculatedDeviceStatus'] = this.calculateDeviceStates(asset);
+        }
+      });
+      this.devicePenalList = this.devicesList
+    })
+  }
+
+  calculateDeviceStates(asset: any) {
+    let status;
+    let statusDuration;
+
+    if (asset) {
+      const now = moment();
+
+      if (asset.tripEndDateTime) {
+        const tripEndDateTime = moment(this.convertToTimestamp(asset.tripEndDateTime));
+        const diff = Math.max(0, now.diff(tripEndDateTime));
+        statusDuration = moment.duration(diff).humanize();
+        status = `Stopped for ${statusDuration}`;
+      } else if (asset.tripStartDateTime || asset.speedKPH > 0) {
+        const tripStartDateTime = moment(this.convertToTimestamp(asset.tripStartDateTime));
+        const diff = Math.max(0, now.diff(tripStartDateTime));
+        statusDuration = moment.duration(diff).humanize();
+        status = `Driving for ${statusDuration}`;
+      } else {
+        const msgDateTime = moment(this.convertToTimestamp(asset.msgDateTime));
+        const diff = Math.max(0, now.diff(msgDateTime));
+        statusDuration = moment.duration(diff).humanize();
+        status = `Stopped for ${statusDuration}`;
+      }
+    }
+
+    return status;
+  }
+
+  convertToTimestamp(dateString: string): number {
+    const date = new Date(dateString);
+    return date.getTime();
+  }
+
+  getActiveDevices(list: any) {
+    this.devicesList = [...list];
+  }
+
+  // To manipulate the response for tree view
+  modification(data: any[], level: string = '') {
+    data.forEach((item: any) => {
+      item.label = item.title || item.label;
+      item.map_type = item.type;
+      delete item['type'];
+      item.level = level || item.level;
+  
+      let devicesCount = 0;
+  
+      // If there are gateways, count the devices within them
+      if (item.gateway?.length) {
+        item.gateway.forEach((gatewayItem: any) => {
+          devicesCount += gatewayItem.device.length;
+        });
+      }
+  
+      // Recursively process and count devices in children
+      if (item.building?.length) {
+        item.children = item.building.map((buildingItem: any) => ({
+          ...buildingItem,
+          label: buildingItem.name,
+          level: 'building',
+          facilityId: item.id
+        }));
+        delete item.building;
+        this.modification(item.children, 'building');
+        item.children.forEach((child: { devicesCount: any; }) => devicesCount += child.devicesCount || 0);
+      }
+      if (item.floor?.length) {
+        item.children = item.floor.map((floorItem: any) => ({
+          ...floorItem,
+          label: floorItem.label,
+          level: 'floor',
+          map_type: item.map_type,
+          buildingId: item.id,
+          facilityId: item.facilityId
+        }));
+        delete item.floor;
+        this.modification(item.children, 'floor');
+        item.children.forEach((child: { devicesCount: any; }) => devicesCount += child.devicesCount || 0);
+      }
+  
+      item.devicesCount =  devicesCount;
+    });
+  }
+
+  calculateDevices(item: any){
+    
+    item[item.level].forEach((element: any) => {
+      element
+      
+    });
+  }
+
+  // Get selected level form tree
+  getSelectedNode(selectedNode: any) {
+    this.selectedTreeNode = null;
+    if(!selectedNode){
+      this.clearGroupFilter();
+      return;
+    }
+    if (selectedNode?.node?.label == 'Level') {
+      return;
+    }
+    this.resetFilterIds();
+    this.selectedFloorDevices = [];
+    switch (selectedNode?.node?.level) {
+      case 'facility':
+        this.selectedFacilityId = selectedNode?.node.id;
+        break;
+      case 'floor':
+        this.devicesList = [];
+        this.selectedFloorId = selectedNode?.node.id;
+        this.selectedFloorDevices = selectedNode.node?.gateway.device || [];
+        this.socketService.connectSocket();
+        break;
+      case 'building':
+        this.selectedBuildingId = selectedNode?.node.id;
+        break;
+    }
+    this.selectedPlatformType = "ble";
+    this.getAllDevices();
+
+
+    if (selectedNode) {
+      this.selectedTreeNode = selectedNode?.node;
+      this.socketService.disconnectSocket()
+    } else {
+      this.selectedTreeNode = this.facilityResponse;
+      this.socketService.disconnectSocket()
+    }
+    this.getDeviceDetails();
+  }
+
+  // Get devices list when toggle enable/disable
+  getFloorDevices(devices: Device[]) {
+    this.selectedFloorDevices = [];
+    this.facilityResponse.forEach((facility: any) => {
+      if (facility.id == devices[0].facilityId) {
+        facility.children.forEach((building: any) => {
+          if (building.id == devices[0].buildingId) {
+            building.children.forEach((floor: any) => {
+              if (floor.id == devices[0].floorId) {
+                {
+                  building.children.device = devices;
+                  this.selectedFloorDevices = [...building.children.device];
+                }
+              }
+            });
+          }
+        })
+      }
+    });
+    this.getDeviceDetails();
+
+  }
+
+  resetMapView() {
+    this.treeView.treeElement.selection = null
+    this.treeView.selectedNode.next(null);
+    this.getDeviceDetails();
+    this.selectedTreeNode = this.facilityResponse;
+  }
+
+  getDeviceDetails() {
+    const payload = {
+      "facilityId": this.selectedTreeNode?.facilityId || '',
+      "buildingId": this.selectedTreeNode?.buildingId || ''
+    }
+    this.campusService.getDeviceSummary(payload).subscribe((tableData: DeviceSummary) => {
+      this.tableConfig = tableData.data
+    });
+
+  }
+
+  getGroupsFilters() {
+    this.groupsService.getGroups(HeadersObj).subscribe((groups: any) => {
+      this.groupsConfig = groups.data;
+    });
+
+  }
+
+  getSelectedGroupItem(item: any) {
+    this.selectedTreeNode = null;
+    this.facilityResponse = null;
+    setTimeout(() => {
+      this.facilityResponse = [{
+        label: "Level",
+        children: this.mainResponse
+      }];
+      this.selectedGroupId = item?.vehicle_group_id;
+      if (item.type) {
+        this.onFilterItemSelection(item);
+        this.selectedPlatformType = 'ble';
+      }
+      else {
+        this.selectedPlatformType = 'nova';
+      }
+      this.getAllDevices();
+
+
+    }, 0);
+  }
+
+  collectIds(devices: any[]): any[] {
+    // Helper function to recursively collect ids
+    const getIds = (device: any): any[] => {
+      let ids = [device.id];
+
+      if (device.children && Array.isArray(device.children)) {
+        device.children.forEach((child: any) => {
+          ids = ids.concat(getIds(child)); // Recursively collect ids from children
+        });
+      }
+
+      return ids;
+    };
+
+    // Use flatMap to apply the helper function to each device
+    return devices.flatMap((device: any) => getIds(device));
+  }
+
+  onFilterItemSelection(item: any) {
+    // for multi select need to replace the check here....
+    if (!item) {
+      this.clearGroupFilter();
+      return;
+    }
+    this.selectedFloorDevices = [];
+    this.selectedItems = item;
+
+    // For single select.......
+    const devices = item?.devices ?? item?.node?.children ?? (item?.node ? [item?.node] : (item ? [item] : []));
+
+
+
+    // For multi select......
+    // const devices = item
+
+    let data: any = [];
+    const ids = this.collectIds(devices);
+    devices.flatMap((device: any) => {
+      // Initialize an array to store ids
+
+      let allIds: any = [];
+
+      // Check if the device has children
+      if (device.children && Array.isArray(device.children)) {
+        // Add the ids of the children to the allIds array
+        allIds = allIds.concat(device.children.map((child: any) => child.id));
+      }
+      else {
+        allIds = [device.id]
+      }
+
+      return allIds;
+    });
+
+
+    // Iterate over each facility
+
+    [...this.mainResponse].forEach((facility: any) => {
+      // Filter buildings within the facility
+      const filteredBuildings = facility?.children?.map((building: any) => {
+        // Filter floors within the building
+        const filteredFloors = building?.children?.map((floor: any) => {
+          // Filter gateways within the floor
+          const filteredGateways = floor?.gateway?.map((gateway: any) => {
+            // Filter devices within the gateway
+            const filteredDevices = gateway?.device?.filter((device: any) => ids.includes(device.id));
+            // Return gateway with filtered devices if any devices match
+            return filteredDevices?.length > 0 ? { ...gateway, device: filteredDevices } : null;
+          }).filter((gateway: any) => gateway !== null); // Remove null values
+
+          // Return floor with filtered gateways if any gateways match
+          return filteredGateways?.length > 0 ? { ...floor, gateway: filteredGateways } : null;
+        }).filter((floor: any) => floor !== null); // Remove null values
+
+        // Return building with filtered floors if any floors match
+        return filteredFloors?.length > 0 ? { ...building, children: filteredFloors } : null;
+      }).filter((building: any) => building !== null); // Remove null values
+
+      // If there are any buildings with matching floors, add the facility to data
+      if (filteredBuildings?.length > 0) {
+        data.push({ ...facility, children: filteredBuildings });
+      }
+    });
+    this.facilityResponse = [{
+      label: "Level",
+      children: data
+    }];
+    this.selectedTreeNode = data
+  }
+
+
+  clearGroupFilter() {
+    this.resetFilterIds();
+    this.selectedFloorDevices = [];
+    this.selectedItems = null;
+    this.treeView.selectedNodes = [];
+    // this.resetNodeSelection(this.treeView.treeConfig);
+    this.showList = new Array(this.groupsConfig.length).fill(false);
+    this.facilityResponse = [{
+      label: "Level",
+      children: this.mainResponse
+    }];
+    this.selectedTreeNode = this.mainResponse;
+    this.getAllDevices();
+  }
+
+  resetNodeSelection(node: any) {
+    node.forEach((node: any) => {
+      node.partialSelected = false;
+      node.expanded = false;
+      if (node.children) {
+        this.resetNodeSelection(node.children);
+      }
+    });
+  }
+
+  filteredDeviceItem(item: any) {
+    this.highlightDeviceItem = item;
+    this.highlightMarker = item;
+    if(this.clearTimeOut){
+      clearTimeout(this.clearTimeOut);
+    }
+    this.clearTimeOut =  setTimeout(() => {
+      this.highlightDeviceItem = null;
+    }, 1000);
+  }
+
+  resetFilterIds() {
+    this.selectedFacilityId = null;
+    this.selectedBuildingId = null;
+    this.selectedFloorId = null;
+    this.selectedGroupId = null;
+    if (this.groupComp) {
+      this.groupComp.selectedItem = '';
+    }
+    this.selectedPlatformType = null
+  }
+
+  highlightSelectedDeviceItem(item: any){
+   this.highlightMarker = item;
+  }
+
+}
+
+
+HTML ......................Angular 17 structure
+
+<div class="campusSection" [class.campusModule]="!isTableView">
+    <!-- @if (groupsConfig?.length) { -->
+    <div class="campSidebar itemList" [ngClass]="{'toggle': groupsConfig?.length, 'hideFacilityList': hideGroupTree}">
+        <div class="filter-sidebar-summary">
+            <div class="filter-sidebar-total">{{groupsConfig?.length}} items
+            </div>
+            <a type="button" class="clearBtn" (click)="clearGroupFilter()">
+                <i class="pi pi-trash"></i>Clear
+            </a>
+        </div>
+        <div class="filter-listingmodule">
+            @if(groupsConfig?.length){
+            <app-group-filter (selectedGroup)="getSelectedGroupItem($event)" [groupsList]="groupsConfig"></app-group-filter>
+            } @if (facilityResponse?.length) {
+            <app-facility-tree [filtering]="false" [treeConfig]="facilityResponse" (selectedNode)="getSelectedNode($event)"></app-facility-tree>
+            }
+        </div>
+    </div>
+    @if (!hideFacilityTree) {
+    <div class="campSidebar deviceListContainer" [ngClass]="{'toggle': selectedFloorDevices.length, 'hideFacilityList': hideFacilityTree}">
+        <div class="deviceListing">
+            <app-device-list-filter [deviceItems]="deviceFilterList" (selectedDevice)="filteredDeviceItem($event)"></app-device-list-filter>
+            <app-device-penal (highlightSelectedDeviceItem)="highlightSelectedDeviceItem($event)" (selectedDevice)="getActiveDevices($event)" [devicesList]="devicePenalList" [highlightDeviceItem]="highlightDeviceItem"></app-device-penal>
+        </div>
+
+
+    </div>
+    } @if(selectedTreeNode?.level == 'floor'){
+    <app-map-view [devices]="selectedFloorDevices" [mapConfig]="selectedTreeNode" (isHideTreeView)="hideFacilityTree = !hideFacilityTree;" (isHideGroupView)="hideGroupTree = !hideGroupTree;" (resetMap)="resetMapView()" (isHideTableView)="isTableView = !isTableView"></app-map-view>
+    } @else {
+    <app-google-map [highlightMarker]="highlightMarker" (isHideTreeView)="hideFacilityTree = !hideFacilityTree;" (resetMap)="resetMapView()" [devices]="devicesList" (isHideTableView)="isTableView = !isTableView" (isHideGroupView)="hideGroupTree = !hideGroupTree;"></app-google-map>
+    }
+</div>
+@if (tableConfig) {
+<app-table [class.hideTable]="!isTableView" [tableConfig]="tableConfig"></app-table>
+}

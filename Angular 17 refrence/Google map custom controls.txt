@@ -1,0 +1,260 @@
+goggle map custom controls
+
+import { Component, EventEmitter, Input, output, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { GoogleMap, GoogleMapsModule, MapInfoWindow, MapMarker } from '@angular/google-maps';
+import { DevicePenalComponent } from '../ui-components/device-penal/device-penal.component';
+import { DomSanitizer } from '@angular/platform-browser';
+
+@Component({
+  selector: 'app-google-map',
+  standalone: true,
+  imports: [GoogleMapsModule],
+  templateUrl: './google-map.component.html',
+  styleUrl: './google-map.component.scss'
+})
+export class GoogleMapComponent {
+
+  @ViewChild(GoogleMap, { static: false }) map!: GoogleMap;
+  @ViewChild('mapContainer') mapContainer!: any;
+  @ViewChild(DevicePenalComponent) deviceComp!: DevicePenalComponent;
+
+  @ViewChild(MapInfoWindow, { static: false }) infoWindow!: MapInfoWindow;
+  @ViewChild(DevicePenalComponent) hightLightedDevice !: DevicePenalComponent;
+
+  @Input() mapConfig: any;
+  @Input() devices: any[] = [];
+  @Input() highlightMarker: any;
+
+  @Output() isHideTreeView = new EventEmitter<any>();
+  @Output() isHideTableView = new EventEmitter<any>();
+  @Output() isHideGroupView = new EventEmitter<any>();
+  @Output() resetMap = new EventEmitter<any>();
+  infoContent: any = '';
+  markers: any[] = [];
+  center: google.maps.LatLngLiteral = {
+    lat: 22.2736308,
+    lng: 70.7512555,
+  };
+
+  zoom = 6;
+  layers: any[] = [];
+  imageOverlay: any;
+  googleOriginal: any;
+  deviceIds: any[] = [];
+  markerIcons: string = 'https://maps.gstatic.com/mapfiles/transparent.png'; // Default marker icon URL
+  zoomAnimation: any;
+  display!: google.maps.LatLngLiteral;
+  selectedVehicleName: string = 'Vehicle1';
+
+  constructor(private sanitizer: DomSanitizer){
+  }
+
+  ngOnInit(): void {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['devices']) {
+      this.updateMarkers();
+    }
+    if(this.highlightMarker){ 
+      this.zoomToMarker(this.highlightMarker._id)
+     }
+    
+  }
+
+  updateMarkers(): void {
+    this.markers = [];
+    if (this.devices?.length) {
+      for (let config of this.devices) {
+        
+        if (JSON.parse(localStorage.getItem('activeDevices') || '').includes(config?.vehicle_id || config?.id)) {
+          const markerConfig: any = this.createMarker({
+            markerName: config.name || config.title,
+            _id: config.vehicle_id || config.id,
+            coordinates: { lat: +(config?.gpsMessage?.lat || config?.lat), lng: +(config?.gpsMessage?.lng || config?.lng) },
+            popupContent: config.label
+          });
+          if(markerConfig.position.lat && markerConfig.position.lng){
+            this.markers.push(markerConfig);
+          }
+        }
+      }
+      if(this.markers?.length){
+        this.zoomToMarkers();
+      }
+    }
+
+  }
+
+  zoomToMarker(id: number) {
+    const location = this.markers.find(loc => loc._id === id);
+    if (location) {
+      this.map.panTo(location.position);
+      this.map.zoom = 15; // Set the desired zoom level
+    }
+  }
+
+  zoomToMarkers(): void {
+    const bounds = new google.maps.LatLngBounds();
+    this.markers.forEach(marker => {
+      bounds.extend(marker.position);
+    });
+    setTimeout(() => {
+      this.mapContainer.googleMap.fitBounds(bounds);
+    }, 10);
+  }
+
+  markerIcon() {
+    if (!window.google) return undefined;
+    return {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      fillColor: "#2725C6",
+      fillOpacity: 1,
+      strokeWeight: 1,
+      scale: 5,
+      anchor: new google.maps.Point(0, 2.5),
+      labelOrigin: new google.maps.Point(0, 2.5)
+    };
+  }
+
+  createMarker(options: any) {
+    return {
+      markerName: options.markerName,
+      _id: options._id,
+      position: options.coordinates,
+      title: options.popupContent,
+      icon: this.markerIcon(),
+      draggable: options.draggable || false,
+      label: options.popupContent,
+      content: options.popupContent
+    };
+  }
+ 
+  openInfoWindow(marker: MapMarker, markerData: string) {
+    const { markerName, position }: any = markerData;
+    this.infoContent = this.sanitizer.bypassSecurityTrustHtml(`
+      <div class="addressNotification">
+        <strong>Asset Name:</strong> ${markerName}<br>
+        <strong>Location:</strong> ${position.lat}, ${position.lng}
+      </div>
+    `);
+    this.infoWindow.open(marker);
+  }
+
+  closeInfoWindow() {
+    this.infoWindow.close();
+  }
+
+  moveMap(event: google.maps.MapMouseEvent) {
+    if (event.latLng != null) this.center = event.latLng.toJSON();
+  }
+
+  move(event: google.maps.MapMouseEvent) {
+    if (event.latLng != null) this.display = event.latLng.toJSON();
+  }
+
+  ngAfterViewInit() {
+    if (this.map?.googleMap) {
+      this.addCustomControls(this.map.googleMap);
+    }
+  }
+
+  addCustomControls(map: google.maps.Map) {
+    const hideTreeViewControlDiv = document.createElement('div');
+    this.HideTreeViewControl(hideTreeViewControlDiv, map);
+    map.controls[google.maps.ControlPosition.TOP_LEFT].push(hideTreeViewControlDiv);
+
+    const resetMapControlDiv = document.createElement('div');
+    this.ResetMapControl(resetMapControlDiv, map);
+    map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(resetMapControlDiv);
+
+    const hideGroupViewControlDiv = document.createElement('div');
+    this.HideGroupViewControl(hideGroupViewControlDiv, map);
+    map.controls[google.maps.ControlPosition.TOP_LEFT].push(hideGroupViewControlDiv);
+  }
+
+  HideTreeViewControl(controlDiv: HTMLElement, map: google.maps.Map) {
+    const controlUI = document.createElement('div');
+    controlUI.title = 'Click to hide/show tree view';
+    controlDiv.appendChild(controlUI);
+    const controlText = document.createElement('div');
+    let icon = 'pi-chevron-left';
+    controlText.innerHTML = `<div class="hideTreeView"><i class="pi ${icon}"></i></div>`;
+    controlUI.appendChild(controlText);
+    controlUI.addEventListener('click', () => {
+      this.isHideTreeView.emit();
+      icon = icon === 'pi-chevron-right' ? 'pi-chevron-left' : 'pi-chevron-right';
+      controlText.innerHTML = `<div class="hideTreeView"><i class="pi ${icon}"></i></div>`;
+      setTimeout(() => {
+        google.maps.event.trigger(map, 'resize');
+      }, 400);
+    });
+  }
+
+  HideGroupViewControl(controlDiv: HTMLElement, map: google.maps.Map) {
+    const controlUI = document.createElement('div');
+    controlUI.title = 'Click to hide/show group view';
+    controlDiv.appendChild(controlUI);
+    const controlText = document.createElement('div');
+    let icon = 'pi-angle-double-left';
+    controlText.innerHTML = `<div class="hideGroupView"><i class="pi ${icon}"></i></div>`;
+    controlUI.appendChild(controlText);
+    controlUI.addEventListener('click', () => {
+      this.isHideGroupView.emit();
+      icon = icon === 'pi-angle-double-right' ? 'pi-angle-double-left' : 'pi-angle-double-right';
+      controlText.innerHTML = `<div class="hideGroupView"><i class="pi ${icon}"></i></div>`;
+      setTimeout(() => {
+        google.maps.event.trigger(map, 'resize');
+      }, 400);
+    });
+  }
+
+  ResetMapControl(controlDiv: HTMLElement, map: google.maps.Map) {
+    const controlUI = document.createElement('div');
+    controlUI.className = 'leaflet-bar leaflet-control';
+    controlUI.title = 'Click to reset the map';
+    controlDiv.appendChild(controlUI);
+    const controlText = document.createElement('div');
+    controlText.innerHTML = '<div class="resetMap"><i class="pi pi-undo"></i></div>';
+    controlUI.appendChild(controlText);
+    controlUI.addEventListener('click', () => {
+      const ids = this.devices.flatMap(device =>  (device.vehicle_id || device.id));
+      localStorage.setItem('activeDevices', JSON.stringify(ids));
+      this.updateMarkers();
+      if(this.markers?.length){
+        this.zoomToMarkers();
+      }
+      setTimeout(() => {
+        google.maps.event.trigger(map, 'resize');
+      }, 400);
+    });
+  }
+}
+
+
+HTML structure
+
+<div class="mapWrapper">
+
+    <google-map #mapContainer [center]="center" [zoom]="zoom"
+        (mapClick)="moveMap($event)" (mapMousemove)="move($event)">
+
+        @for (marker of markers; track $index) {
+            <map-marker
+            #markerRef="mapMarker"
+            [position]="marker.position"
+            [title]="marker.title"
+            [options]="{icon :marker.icon}"
+            [label]="{
+                text: 'Device Name: ' + marker.markerName,
+                color: 'white',
+                className: 'map__marker-label ' + marker?.vehicleName + (highlightMarker?._id === marker?._id ? ' map__marker-label-highlight' : ''),
+                fontSize: '12px',
+              }"
+              (mapMouseover)="openInfoWindow(markerRef, marker)"
+              (mapMouseout)="closeInfoWindow()"
+          ></map-marker>
+          
+        }
+        <map-info-window #infoWindow><div [innerHtml]="infoContent"></div></map-info-window>
+    </google-map>
+</div>

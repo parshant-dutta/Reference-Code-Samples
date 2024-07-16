@@ -1,0 +1,52 @@
+Web component 
+
+ imports: [
+    BrowserModule,
+    AppRoutingModule,
+    HttpClientModule,
+    ReactiveFormsModule,
+    BrowserAnimationsModule,
+    CampusModule,
+    DynamicFormBuilderModule,
+    ScrollerModule,
+    ToastModule,
+    SocketIoModule.forRoot(config)],
+  providers: [TreeModule, CookieService, HttpClientModule, 
+    {
+    provide: HTTP_INTERCEPTORS,
+    useClass: HttpHandlerInterceptor,
+    multi: true,
+  },
+  MessageService
+],
+  bootstrap: [AppComponent, CampusComponent]
+})
+
+export class AppModule {
+  constructor(private injector: Injector) {
+    const el = createCustomElement(CampusComponent, { injector });
+    customElements.define('ble-campus', el);
+  }
+  ngDoBootstrap() { }
+}
+
+build commands......
+"build:component": "ng build --output-hashing=none --configuration=production && node build-component.js"
+
+
+
+const fs = require('fs-extra');
+const concat = require('concat');
+
+build = async () =>{
+    const files = [
+        './dist/nova-web-components/runtime.js',
+        './dist/nova-web-components/polyfills.js',
+        './dist/nova-web-components/main.js',
+
+      ];
+    
+      await fs.ensureDir('widget');
+      await concat(files, 'widget/campus-widget.js');
+}
+build();
