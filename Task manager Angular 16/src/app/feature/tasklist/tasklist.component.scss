@@ -1,0 +1,75 @@
+.tableheading {
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin-bottom: 10px;
+    position: relative;
+    .addtaskbtn {
+        button {
+            height: 30px;
+        }
+    }
+    .searchTask {
+        position: absolute;
+        right: 0;
+        input {
+            height: 30px;
+        }
+    }
+}
+
+.sourceNotFound {
+    position: absolute;
+    right: 50%;
+    bottom: 50%;
+    // transform: translate(-50%, -50%);
+    .nodata {
+        font-weight: 500;
+        font-size: 16px;
+        line-height: 18px;
+    }
+}
+
+.editDatawarpper {
+    display: flex;
+    align-items: center;
+    grid-gap: 15px;
+    span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        .mat-icon {
+            color: #2671bc;
+            font-size: 20px;
+            line-height: 24px;
+            text-align: center;
+        }
+        &:hover {
+            &.deleteOutline {
+                border: 2px solid #ff0000!important;
+                box-shadow: 2px 2px 10px rgba(0 0 0/10%);
+                background-color: white;
+                .mat-icon {
+                    color: #ff0000!important;
+                }
+            }
+            border: 2px solid #2671bc(97, 97, 239);
+            box-shadow: 2px 2px 10px rgba(0 0 0/10%);
+            background-color: white;
+            .mat-icon {
+                color: #2671bc;
+            }
+        }
+    }
+}
+
+.descriptionArea {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 220px;
+    white-space: nowrap;
+}

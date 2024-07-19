@@ -1,0 +1,96 @@
+.mainChartwrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    word-wrap: break-word;
+    background-clip: border-box;
+    border-radius: 3px;
+    // padding: 20px 0;
+    .chartHead {
+        padding: 15px;
+        margin-bottom: 0;
+        background-color: white;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+        h4 {
+            margin-bottom: 0;
+            font-size: 18px;
+            line-height: 20px;
+            color: #514b4b;
+            font-weight: 600;
+        }
+    }
+    .analyDashboard {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        padding: 20px 0;
+        gap: 15px;
+        .card {
+            background-color: white;
+            color: white!important;
+            transition: all 0.5s;
+            position: relative;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            .card-body {
+                padding: 20px !important;
+                text-align: center;
+                color: black;
+                .chartContent {
+                    position: absolute;
+                    top: -20px;
+                    left: 10px;
+                    width: 58px;
+                    height: 58px;
+                    transition: all 0.5s;
+                    background: linear-gradient(to right, #4cc1ec, #c4c1b8);
+                    border-radius: 5px;
+                    &.chart2 {
+                        background-image: linear-gradient(195deg, #4cc1ec, #c4c1b8);
+                    }
+                    &.chart3 {
+                        background-image: linear-gradient(195deg, #4cc1ec, #c4c1b8);
+                    }
+                    &.chart4 {
+                        background-image: linear-gradient(195deg, #4cc1ec, #c4c1b8);
+                    }
+                }
+                mat-icon {
+                    color: rgb(70, 46, 46);
+                    font-size: xx-large;
+                    overflow: visible;
+                }
+                p {
+                    color: black;
+                    font-size: 30px;
+                    line-height: 24px;
+                    font-weight: 800;
+                }
+                h4 {
+                    margin-bottom: 5px;
+                }
+                .textList {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                }
+                .totalFields {
+                    border-top: 1px solid grey;
+                    display: flex;
+                    align-items: center;
+                    padding-top: 8px;
+                    b {
+                        color: #43a047;
+                    }
+                }
+            }
+            &:hover {
+                .chartContent {
+                    box-shadow: 2px 2px 10px rgba(0 0 0/30%);
+                    transform: translateY(-15px);
+                }
+            }
+        }
+    }
+}

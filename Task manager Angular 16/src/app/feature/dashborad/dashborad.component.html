@@ -1,0 +1,60 @@
+<div class="mainChartwrapper">
+    <div class="analyDashboard">
+        <div class="card chartOne">
+            <a style="text-decoration: none; color: #fff;">
+                <div class="card-body">
+                    <span class="chartContent">
+                        <mat-icon>library_books</mat-icon>
+                 </span>
+                    <span class="textList">
+                        <p class="card-text">{{totalCompletetask}}</p>
+                    <h4>Total Complete Task</h4>
+                 </span>
+                </div>
+            </a>
+        </div>
+
+        <div class="card chartTwo">
+            <a style="text-decoration: none; color: #fff;">
+                <div class="card-body">
+                    <span class="chartContent chart2">
+                        <mat-icon>library_books</mat-icon>
+                </span>
+                    <span class="textList">
+                        <p class="card-text">{{totalIncompletetask}}</p>
+                    <h4 >Total Incomplete Task</h4>
+                </span>
+                </div>
+            </a>
+        </div>
+
+        <div class="card chartThree">
+            <a style="text-decoration: none; color: #fff;" [routerLink]="['/tasklist']">
+                <div class="card-body">
+                    <span class="chartContent chart4">
+                        <mat-icon> format_list_bulleted</mat-icon>
+                </span>
+                    <span class="textList">
+                        <p class="card-text">{{totalTaskLIast}}</p>
+                    <h4 >Total Task List</h4>
+                </span>
+                </div>
+            </a>
+        </div>
+
+        <div class="card chartThree">
+            <a style="text-decoration: none; color: #fff;" [routerLink]="['/taskdetail/1']">
+                <div class="card-body">
+                    <span class="chartContent chart3">
+                        <mat-icon>details</mat-icon>
+                </span>
+                    <span class="textList">
+                        <p class="card-text revenueFields"></p> 
+
+                    <h4 >GO Detail Page </h4>
+                </span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>

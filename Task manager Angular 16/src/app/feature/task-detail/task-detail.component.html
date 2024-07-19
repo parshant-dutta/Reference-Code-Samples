@@ -1,0 +1,73 @@
+<!-- task Daetail -->
+<div class="parkingWrapper w-100">
+    <span class="backicon"><mat-icon (click)="backPage()">arrow_back_ios</mat-icon>
+    <h2>Task Detail</h2>
+   <p> Editable Mode On/Off  <mat-slide-toggle  (click)="toggleReadonly()">
+       </mat-slide-toggle></p></span>
+
+    <!-- Detail task -->
+
+    <div *ngIf="isReadonly" class="detailType">
+        <div class="nameField">
+            <label>Title :</label>
+            <span class="">{{taskDetailList?.title}}</span>
+        </div>
+        <div class="nameField">
+
+            <label>Status :</label>
+            <span class="">{{taskDetailList?.status}}</span>
+        </div>
+        <div class="nameField">
+            <label>Assign By :</label>
+            <span class="">{{taskDetailList?.assignby}}</span>
+        </div>
+
+        <div class="nameField">
+
+            <label>Assign To :</label>
+            <span class="">{{taskDetailList?.assignto}}</span>
+        </div>
+        <div class="nameField">
+
+            <label>Description :</label>
+            <div class="aboutWrapper" [innerHtml]="pageDes"></div>
+        </div>
+    </div>
+
+    <!-- Edit mode when user want edit in detail page data -->
+
+    <div class="detailType" *ngIf="!isReadonly">
+        <div class="nameField">
+            <label>Title :</label>
+            <input [readonly]="isReadonly" [(ngModel)]="taskDetailList.title" class="col" />
+        </div>
+
+        <div class="nameField">
+            <label for="status">Status :</label>
+            <mat-form-field class="selcetField">
+                <mat-label>Select</mat-label>
+                <mat-select [(ngModel)]="taskDetailList.status">
+                    <mat-option *ngFor="let item of status;" [value]="item.name">{{item.name}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <div class="nameField">
+            <label>Assign By :</label>
+            <input [readonly]="isReadonly" [(ngModel)]="taskDetailList.assignby" class="col" class="" />
+        </div>
+
+        <div class="nameField">
+            <label>Assign To :</label>
+            <input [readonly]="isReadonly" [(ngModel)]="taskDetailList.assignto" class="col" class="" />
+        </div>
+
+        <div class="nameField">
+            <label>Description :</label>
+            <!-- <textarea *ngIf="isReadonly" class="tesxt-area" [readonly]="isReadonly" [(ngModel)]="taskDetailList.description"></textarea> -->
+            <angular-editor [(ngModel)]="taskDetailList.description" [config]="config" asdas></angular-editor>
+            <!-- <div *ngIf="isReadonly" class="aboutWrapper" [innerHtml]="pageDes"></div> -->
+
+        </div>
+    </div>
+    <button *ngIf="!isReadonly" class="btn" (click)="update()">update</button>
+</div>

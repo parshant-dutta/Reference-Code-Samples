@@ -1,0 +1,39 @@
+.header {
+    // background-color: #5372c2;
+    background: linear-gradient(to right, #4cc1ec, #c4c1b8);
+    .navbar {
+        width: 100%;
+        .navbar-brand {
+            img {
+                max-width: 40px;
+            }
+        }
+        .navbar-collapse {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            .navbar-nav {
+                .nav-item {
+                    a {
+                        color: #fff;
+                    }
+                }
+            }
+            .headerMenu {
+                display: flex;
+                align-items: center;
+                .mat-icon {
+                    color: #fff;
+                }
+                .dropdown-menu {
+                    position: absolute;
+                    left: -70px !important;
+                    li a {
+                        color: #000;
+                    }
+                }
+            }
+        }
+    }
+}

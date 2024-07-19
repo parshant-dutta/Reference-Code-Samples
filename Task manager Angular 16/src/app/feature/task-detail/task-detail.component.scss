@@ -1,0 +1,50 @@
+.parkingWrapper {
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 2px 2px 10px rgba(0 0 0/20%);
+    padding: 10px 20px;
+    margin: 10px 0px;
+    position: relative;
+    .detailType {
+        display: grid;
+        padding: 10px;
+        grid-gap: 25px;
+        grid-template-columns: repeat(2, 1fr);
+        .nameField {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            label {
+                font-weight: 500;
+                color: rgb(6 168 224);
+                min-width: 130px;
+            }
+            span {
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                max-width: 360px;
+            }
+        }
+    }
+    span {
+        display: flex;
+        position: relative;
+        mat-icon {
+            margin-top: 3px;
+        }
+        p {
+            position: absolute;
+            right: 0;
+        }
+    }
+}
+
+.btn {
+    background-color: rgb(129, 207, 207);
+    color: black;
+    float: right;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+}

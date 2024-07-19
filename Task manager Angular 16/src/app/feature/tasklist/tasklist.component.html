@@ -1,0 +1,56 @@
+<div class="tableheading">
+    <!-- Add Task  -->
+    <div class="addtaskbtn">
+        <button (click)="openDailog('','addTask')">Add Task</button>
+    </div>
+    <!-- Search task -->
+    <div class="searchTask">
+        <input matInput (keyup)="applyFilter($event)" placeholder="Search columns" #input>
+
+    </div>
+</div>
+
+<!-- Table  -->
+<div class="table">
+    <mat-table matSort [dataSource]="dataSource" class="mat-elevation-z8">
+
+        <ng-container *ngFor="let prop of columnHeadings; index as i">
+            <ng-container [matColumnDef]="prop">
+                <mat-header-cell mat-sort-header (click)="sortData(prop)" *matHeaderCellDef [disabled]="
+                prop === 'action'|| !dataSource.filteredData.length"> {{ displayedColumns[i] }} </mat-header-cell>
+                <mat-cell *matCellDef="let element">
+                    <div *ngIf="prop != 'description'">
+
+                        {{element[prop]}}
+                    </div>
+                    <div *ngIf="prop === 'description'" class="descriptionArea" [innerHtml]="element[prop]"></div>
+
+                    <div class="editDatawarpper" *ngIf="displayedColumns[i] === 'Action'">
+                        <span>
+                            <mat-icon matTooltip="Preview" (click)="detailPage(element.id)">visibility</mat-icon>
+                        </span>
+                        <span>
+                            <mat-icon matTooltip="Edit" class="edit" (click)="openDailog(element, 'editTask')">edit</mat-icon>
+                        </span>
+                        <span class="deleteOutline">
+                            <mat-icon matTooltip="Delete"  (click)="deleteTask(element.id ,'delete')">delete</mat-icon>
+                        </span>
+
+                    </div>
+                </mat-cell>
+            </ng-container>
+
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="columnHeadings"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: columnHeadings;"></mat-row>
+
+    </mat-table>
+    <div *ngIf="!dataSource.filteredData.length" class="sourceNotFound">
+        <div class="nodata">No Data Found</div>
+    </div>
+</div>
+<div>
+    <mat-paginator [length]="totalRecords" #paginator [pageSize]="pageSize" [showFirstLastButtons]="true" aria-label="Select page of users">
+    </mat-paginator>
+</div>

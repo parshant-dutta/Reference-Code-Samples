@@ -1,0 +1,81 @@
+<div class="container">
+    <div class="deleteHeader ">
+        <h3 class="" *ngIf="editData === 'addTask' ? true : false; else editTaskHeading">
+            Add Task
+        </h3>
+        <ng-template #editTaskHeading>
+            <h3 class="">Edit Task</h3>
+        </ng-template>
+        <span class="closeIcon" mat-dialog-close>
+            <mat-icon mat-dialog-close >close</mat-icon>
+        </span>
+    </div>
+    <div class="row">
+        <form [formGroup]="taskForm">
+            <div class="form-group">
+
+                <label for="title">Title :</label>
+                <input class="input" placeholder="Enter your task" formControlName="title" type="text">
+
+                <span *ngIf="taskForm.get('title')?.invalid && (taskForm.get('title')?.dirty || taskForm.get('title')?.touched)" class="errorAlert">
+                    <span *ngIf="taskForm.get('title')?.errors?.['required']">
+                        *Title is required.
+                    </span>
+                </span>
+            </div>
+            <div class="inputFields">
+                <div class="form-group">
+                    <label for="assignby">Assign by :</label>
+                    <input class="input" placeholder="Assign by" formControlName="assignby" type="text">
+                    <span *ngIf="taskForm.get('assignby')?.invalid && (taskForm.get('assignby')?.dirty || taskForm.get('assignby')?.touched)" class="errorAlert">
+                        <span *ngIf="taskForm.get('assignby')?.errors?.['required']">
+                            *This feild is required.
+                        </span>
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="assignto">Assign To :</label>
+                    <input class="input" placeholder="Assign To" formControlName="assignto" type="text">
+                    <span *ngIf="taskForm.get('assignto')?.invalid && (taskForm.get('assignto')?.dirty || taskForm.get('assignto')?.touched)" class="errorAlert">
+                        <span *ngIf="taskForm.get('assignto')?.errors?.['required']">
+                            *This feild is required.
+                        </span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status :</label>
+                <mat-form-field class="selcetField">
+                    <mat-label>Select</mat-label>
+                    <mat-select formControlName="status">
+                        <!-- <mat-option>- None -</mat-option> -->
+                        <mat-option *ngFor="let item of status;" [value]="item.name">{{item.name}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <span *ngIf="taskForm.get('status')?.invalid && (taskForm.get('status')?.dirty || taskForm.get('status')?.touched)" class="errorAlert">
+                    *Status Type is required. 
+                </span>
+            </div>
+
+            <div class="form-group">
+                <label>Description :</label>
+                <angular-editor formControlName="description" [config]="config" asdas></angular-editor>
+                <!-- <textarea class="tesxt-area" placeholder="Description" formControlName="description"></textarea> -->
+
+                <span *ngIf="taskForm.get('description')?.invalid && (taskForm.get('description')?.dirty || taskForm.get('description')?.touched)" class="errorAlert">
+                    <span *ngIf="taskForm.get('description')?.errors?.['required']">
+                        Description is required.
+                    </span>
+                </span>
+            </div>
+        </form>
+        <div class="buttons">
+            <button (click)="submitTask(taskForm.value)">
+             <ng-container *ngIf="editData === 'addTask'">ADD TASK</ng-container>
+             <ng-container *ngIf="editData === 'editTask'">Update</ng-container>
+            </button>
+
+        </div>
+    </div>
+</div>

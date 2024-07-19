@@ -1,0 +1,21 @@
+<div class="deleteModal">
+    <div class="deleteHeader ">
+        <h3 class=""> Delete</h3>
+        <span class="closeIcon" mat-dialog-close>
+            <mat-icon mat-dialog-close >close</mat-icon>
+        </span>
+    </div>
+    <div class="bodyContent">
+        <div class="contentWrapper">
+            <h4>Are You Sure</h4>
+            <p>Are you sure you want to delete</p>
+
+        </div>
+
+        <div class="btnWrapper flex-container gap-20">
+            <button class="closeBtn" (click)="onDelete()">Delete</button>
+            <!-- <button class="primaryButton  cancelBtn" mat-dialog-close>Cancel</button> -->
+        </div>
+
+    </div>
+</div>

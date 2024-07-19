@@ -1,0 +1,32 @@
+<div class="sidebarWrapper">
+    <ul class="sideBar">
+        <li>
+            <a routerLinkActive="active" [routerLink]="['/dashborad'] " title="Dashboard">
+                <i class="fa fa-tachometer sideIcon" aria-hidden="true"></i>
+                <span>
+                        DashBoard
+                    </span>
+            </a>
+        </li>
+        <li>
+            <a routerLinkActive="active" [routerLink]="['/tasklist']" title="Task List"><i class="fa fa-users sideIcon"
+                        aria-hidden="true"></i>
+                    <span>
+                        Task List
+                    </span>
+                </a>
+        </li>
+
+        <li>
+            <a routerLinkActive="active" [routerLink]="['taskdetail/1']" title="Task Detail">
+                <i class="fa fa-file-text-o sideIcon" aria-hidden="true"></i>
+                <span>
+                        Add Details
+                    </span>
+
+            </a>
+        </li>
+
+    </ul>
+
+</div>

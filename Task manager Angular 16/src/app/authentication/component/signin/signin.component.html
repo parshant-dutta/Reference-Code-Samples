@@ -1,0 +1,78 @@
+<div class="row">
+    <div class="col-md-4 offset-md-4 col-sm-6 offset-sm-3">
+        <div class="card auth">
+            <div class="card-body auth-card">
+                <div class="auth-avatar">
+                    <img src="https://pluspng.com/img-png/user-png-icon-account-avatar-human-male-man-men-people-person-download-svg-download-png-edit-icon-512.png" alt="user" class="user-image">
+                </div>
+                <form [formGroup]="signupForms">
+                    <div class="form-group">
+                        <label for="username">Username : </label>
+                        <input type="text" name="username" class="form-control" formControlName="username" placeholder="Username">
+                        <span *ngIf="signupForms.get('username')?.invalid && (signupForms.get('username')?.dirty || signupForms.get('username')?.touched)" class="errorAlert validField">
+                            <span *ngIf="signupForms.get('username')?.errors?.['required']">
+                                *Username is required.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone : </label>
+                        <input type="number" name="phone" class="form-control" formControlName="phone" placeholder="Phone">
+                        <span *ngIf="signupForms.get('phone')?.invalid && (signupForms.get('phone')?.dirty || signupForms.get('phone')?.touched)" class="errorAlert validField">
+                            <span *ngIf="signupForms.get('phone')?.errors?.['required']">
+                                *Phone is required.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email : </label>
+                        <input type="email" name="email" class="form-control" formControlName="email" placeholder="Email">
+                        <span *ngIf="signupForms.get('email')?.invalid && (signupForms.get('email')?.dirty || signupForms.get('email')?.touched)" class="errorAlert validField">
+                            <span *ngIf="signupForms.get('email')?.errors?.['required']">
+                                *Email is required.
+                            </span>
+                        <span *ngIf="signupForms.get('email')?.errors?.['emailDomain']">
+                                *Please enter valid email.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password : </label>
+                        <input type="password" name="password" class="form-control" formControlName="password" placeholder="********">
+                        <mat-error class="errorAlert" *ngIf="signupForms.controls?.['password']?.touched && signupForms.get('password')?.errors?.['required']">
+                            *New Password is required.
+                        </mat-error>
+
+                        <mat-error class="errorAlert" *ngIf="signupForms.get('password')?.errors?.['minlength']; else patternValidation">
+                            *Password must be at least 8 characters long.
+                        </mat-error>
+
+                        <ng-template #patternValidation>
+                            <mat-error class="errorAlert" *ngIf="signupForms.get('password')?.errors?.['pattern']">
+                                *Password must have lower case, upper case, and numeric characters.
+                            </mat-error>
+                        </ng-template>
+                    </div>
+                    <div class="form-group">
+                        <label for="c_password">Confirm Password : </label>
+                        <input type="password" name="c_password" class="form-control" formControlName="c_password" placeholder="********">
+
+                        <mat-error class="errorAlert" *ngIf="signupForms?.controls?.['password']?.value !== signupForms?.controls?.['c_password']?.value && signupForms?.controls?.['c_password']?.value?.length > 0">
+                            *Confirm password does not match. </mat-error>
+
+                        <mat-error class="errorAlert" *ngIf="signupForms.controls['c_password']?.touched && signupForms.get('c_password')?.errors?.['required']">
+                            *Confirm Password is required.
+                        </mat-error>
+                    </div>
+                    <div class="text-center">
+                        <button (click)="signUp()" type="button" class="btn btn-my">Submit</button>
+                    </div>
+                    <div class="text-center login">
+                        Already have an account ? <a routerLink="/login">Login</a> here.
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

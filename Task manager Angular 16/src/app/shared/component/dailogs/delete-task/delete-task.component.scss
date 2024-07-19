@@ -1,0 +1,58 @@
+@import '../../../../../assets/style/common';
+.deleteModal {
+    padding: 20px;
+    .deleteHeader {
+        border-bottom: 1px solid grey;
+        display: flex;
+        position: relative;
+        width: 100%;
+        padding-bottom: 5px;
+        h3 {
+            color: black;
+            margin: 0;
+            span {
+                margin-right: 10px;
+                mat-icon {
+                    color: #ff0000;
+                    height: 15px;
+                    width: 21px;
+                    font-size: 18px;
+                    text-align: center;
+                }
+            }
+        }
+        .closeIcon {
+            float: left;
+            position: absolute;
+            right: 0px;
+            border: 1px solid black;
+            border-radius: 50px 50px;
+            line-height: 0px;
+        }
+    }
+    .btnWrapper {
+        text-align: center;
+        .closeBtn {
+            cursor: pointer;
+            background-color: #e34343;
+            color: white;
+            border: 1px solid;
+        }
+    }
+    .bodyContent {
+        .contentWrapper {
+            min-height: 110px;
+            text-align: center;
+            p {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 300;
+            }
+            h4 {
+                font-size: 16px;
+                font-weight: 500;
+                color: black;
+            }
+        }
+    }
+}
