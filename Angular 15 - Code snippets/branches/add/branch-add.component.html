@@ -1,0 +1,459 @@
+<header>
+	<h1> {{ title }}</h1>
+	<hr/>
+	<p>{{ 'label.form.instruction' | i18 }}</p>
+</header>
+
+<h2> {{ 'label.branch.details' | i18}}</h2>
+<form
+        ngNoForm
+        #branchForm
+        [attr.id]="branchFormId"
+        (submit)="$event.preventDefault()"
+>
+    <div class="row">
+		<div class="col-xs-12 col-md-6">
+			<textinput
+				[componentLabel]="'label.branch.name'"
+				[(ngModel)]="model.name"
+				[validationObject]="{required:true, maxLength: 200, validationFunctions: [uniqueNameValidator]}"
+			>
+			</textinput>
+		</div>
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.code'"
+				[(ngModel)]="model.code"
+				[validationObject]="{maxLength: 20}"
+			>
+			</textinput>
+		</div>
+    </div>
+	<div class="row">
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.phoneNumber'"
+				[(ngModel)]="model.phoneNumber"
+				[validationObject]="{maxLength: 32}"
+			>
+			</textinput>
+		</div>
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.faxNumber'"
+				[(ngModel)]="model.faxNumber"
+				[validationObject]="{maxLength: 32}"
+			>
+			</textinput>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.internalBranchId'"
+				[(ngModel)]="model.internalBranchId"
+				[validationObject]="{maxLength: 32}"
+			>
+			</textinput>
+		</div>
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.alternateBranchId'"
+				[(ngModel)]="model.alternateBranchId"
+				[validationObject]="{maxLength: 32}"
+			>
+			</textinput>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-3">
+			<datepicker
+				[useI18]="false"
+				[placeholder]="'label.placeholder.selection' | i18"
+				[dateString]="model.fromDate"
+				(change)="dateFromChange($event)"
+				[componentLabel]="'table.header.default.effectiveFromDate' | i18"
+			>
+			</datepicker>
+		</div>
+
+		<div class="col-md-3">
+			<datepicker
+				[useI18]="false"
+				[placeholder]="'label.placeholder.selection' | i18"
+				[dateString]="model.toDate"
+				(change)="toDateChange($event)"
+				[componentLabel]="'table.header.default.effectiveToDate'  | i18"
+			>
+			</datepicker>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xs-12 col-md-8 col-lg-6">
+			<search-input
+				[componentLabel]= "'label.branch.primaryManagerName'"
+				[data]="searchInputPrimaryManager"
+				[selectedString]="model.primaryBranchManager"
+				[selected]="model.primaryBranchManager"
+				(selectedChange)="setPrimaryManager($event)"
+				[validationObject]="{required:true}"
+		></search-input>
+		</div>
+		<div class="col-xs-12 col-md-8 col-lg-6">
+			<search-input
+				[data]="userPickerStructure"
+				[componentLabel]="'label.branch.osjPerson'"
+				(selectedChange) = "loadAdditionalOsjPersons($event)"
+				[selected]="model.osjPersons"
+				[hideHeader]="true"
+				[multiSelect]="true"
+			>
+			</search-input>
+		</div>
+	</div>
+	<hr>
+
+	<m-address
+		[header]="'label.branch.addresses'"
+		[addressTypeMap]="addressTypeMap"
+		[addressesList]="currentBranchAddresses"
+        (addressesListChange)="onAddressListChange($event)">
+	</m-address>
+
+    <modal
+            *ngIf="shouldOpenConfirmationModalOnAdd"
+            [(open)]="shouldOpenConfirmationModalOnAdd"
+            [title]="'label.branch.addAddressToRep' | i18">
+        <div class="body">
+            <div class="row">
+                <div class="col-md-12">
+                    <header>
+                        <h1> {{ 'label.branch.addAddressToRep' | i18 }} </h1>
+                        <hr/>
+                    </header>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <info-box [level]="'info'" style="font-weight:bold;">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h2>{{'label.attention' | i18}}</h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>{{'label.branch.addAddressToRep.information' | i18}}</p>
+                            </div>
+                        </div>
+                    </info-box>
+                </div>
+            </div>
+            <div class="row" style="font-weight:bold">
+                <div class="col-md-12">
+                    <p> {{ 'label.branch.confirm.addAddressToRep' | i18 }} </p>
+                </div>
+            </div>
+        </div>
+        <div class="foot">
+            <button class="cancel" (click)="closeConfirmModalOnAdd()">
+                {{'label.no' | i18}}
+            </button>
+            <button class="success" (click)="markAddBranchAddressToRep()">
+                {{'label.yes' | i18}}
+            </button>
+        </div>
+    </modal>
+
+    <modal
+            *ngIf="shouldOpenConfirmationModalOnUpdate"
+            [(open)]="shouldOpenConfirmationModalOnUpdate"
+            [title]="'label.branch.updateRepAddress' | i18">
+        <div class="body">
+            <div class="row">
+                <div class="col-md-12">
+                    <header>
+                        <h1> {{ 'label.branch.updateRepAddress' | i18 }} </h1>
+                        <hr/>
+                    </header>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <info-box [level]="'info'" style="font-weight:bold;">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h2>{{'label.attention' | i18}}</h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>{{'label.branch.updateRepAddress.information' | i18}}</p>
+                            </div>
+                        </div>
+                    </info-box>
+                </div>
+            </div>
+            <div class="row" style="font-weight:bold">
+                <div class="col-md-12">
+                    <p> {{ 'label.branch.confirm.updateRepAddress' | i18 }} </p>
+                </div>
+            </div>
+        </div>
+        <div class="foot">
+            <button class="cancel" (click)="closeConfirmModalOnUpdate()">
+                {{'label.no' | i18}}
+            </button>
+            <button class="success" (click)="markUpdateRepAddress()">
+                {{'label.yes' | i18}}
+            </button>
+        </div>
+    </modal>
+
+	<hr>
+	<h2> {{ 'label.branch.legalEntity.section.table.title' | i18}}</h2>
+	<div class="row">
+		<div class="col-xs-12">
+			<m-table
+				[title]="'label.branch.legalEntity.section.table.title' | i18"
+				[model]="leaLinkTableModel"
+				[config]="{
+					columnToggle: true,
+					columnResize: true
+				}"
+				(actionButtonClick)="onBranchCleArlLinkTableAction($any($event).button, $event)">
+				<button class="thin primary"
+					(click)="onBranchCleArlLinkTableAction(branchCleArlAction.ADD)"
+				>
+					{{ 'label.branch.legalEntity.associate.title' | i18 }}
+				</button>
+			</m-table>
+		</div>
+	</div>
+
+	<ng-container *ngIf="hasCustomFields">
+		<hr>
+		<h2>{{ 'label.customClassifications' | i18 }}</h2>
+		<custom-fields
+			#cf2
+			[parentValidation]="true"
+			[subjectId]="model.id">
+		</custom-fields>
+	</ng-container>
+
+	<ng-container *ngIf="showFinra">
+	<hr>
+	<h2> {{ 'label.branch.activitiesHeading' | i18}}</h2>
+	<div class="row">
+		<div class="col-md-3">
+			<textinput
+				[componentLabel]="'label.branch.firmBillingCode'"
+				[(ngModel)]="model.firmBillingCode"
+				[validationObject]="{maxLength: 32}"
+			>
+			</textinput>
+		</div>
+			<div class="col-md-3">
+				<dropdown
+					[list]="branchTypes"
+					[ngModel]="model.branchType"
+					[componentLabel]="'label.branch.type'"
+					[validationObject]="{required: true}"
+					(modelChange)="setBranchType($event)"
+				>
+				</dropdown>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-xs-8 col-md-4 col-lg-4">
+			<div class="button-list button-list-yes-no">
+				<two-option-button
+					[componentLabel]="'label.branch.officeSupervisoryJurisdiction'"
+					[selected]="model.officeSupervisoryJurisdiction === true ? 'yes': model.officeSupervisoryJurisdiction === false ? 'no' : null"
+					(selectedChange)="supervisoryJurisdictionChanged($event)"
+					[validationObject]="{required:true}"
+				></two-option-button>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-6" *ngIf="!model.officeSupervisoryJurisdiction">
+			<search-input
+				[data]="branchPickerStructure"
+				[componentLabel]="'label.branch.osjBranch'"
+				(selectedChange)="branchSelectedChange($event)"
+				[selectedString]="model.osjBranchName"
+				[selected]="model.osjBranchId"
+				[hideHeader]="true"
+				[multiSelect]="false"
+				[validationObject]="{
+					required: true,
+					validationFunctions: [uniqueBranchName]
+				}"
+			>
+			</search-input>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xs-12 col-md-9 col-lg-6">
+			<dropdown
+				[componentLabel]="'label.branch.activities'"
+				[list]="branchActivities"
+				[model]="model.branchActivities"
+				(modelChange)="changeActivities($event)"
+				[multiSelect]="true"
+			></dropdown>
+		</div>
+	</div>
+</ng-container>
+</form>
+
+<floating-bar>
+    <div class="submit-options">
+		<button-return-to-list></button-return-to-list>
+        <button class="success"
+			(click)="save()"
+        >
+            {{(edit ? 'action.save' : 'action.submit') | i18}}
+		</button>
+    </div>
+</floating-bar>
+
+<modal
+	*ngIf="showAssociateLeaModal"
+	[title]="'label.branch.legalEntity.associate.title' | i18"
+	[(open)]="showAssociateLeaModal">
+	<div class="body">
+		<h2> {{'label.branch.legalEntity.associate.header' | i18}} {{model.name}} </h2>
+		<form
+			ngNoForm
+			#leaLinkForm
+			[attr.id]="leaLinkFormId"
+			(submit)="$event.preventDefault()">
+			<div class="row">
+				<div class="col-xs-12 col-md-8">
+					<search-input
+						[componentLabel]="'label.branch.legalEntity.name'"
+						[data]="legalEntityAuthorizationPicker"
+						[selectedString]="leaLink.legalEntityName"
+						[selected]="leaLink.leaId"
+						(selectedChange)="onLegalEntityAuthorizationSelected($event)"
+						[validationObject]="{
+							required: true,
+							validationFunctions: [uniqueLeaValidator]
+						}"
+					></search-input>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-xs-12 col-md-4">
+					<textinput
+						[componentLabel]="'label.branch.legalEntity.regulatory.lea.code'"
+						[ngModel]="leaLink.legalEntityAuthorizationCode"
+						[readonly]="true"
+					>
+					</textinput>
+				</div>
+				<div class="col-xs-12 col-md-4">
+					<textinput
+						[componentLabel]="'label.branch.legalEntity.regulatory.body.code.name'"
+						[ngModel]="leaLink.regulatoryCodeName"
+						[readonly]="true"
+					>
+					</textinput>
+				</div>
+				<div class="col-xs-12 col-md-4">
+					<textinput
+						[componentLabel]=getLegalEntityAuthorizationNumberLabel()
+						[ngModel]="leaLink.legalEntityAuthorizationNumber"
+						[readonly]="true"
+						[useI18]="false"
+					>
+					</textinput>
+				</div>
+			</div>
+			<hr>
+			<h2> {{'label.branch.cle.keyBranchInfo' | i18}} </h2>
+			<div class="row">
+				<div class="col-xs-12 col-md-4">
+					<textinput
+						[componentLabel]=getBranchRegulatorIdLabel()
+						[(ngModel)]="leaLink.branchRegulatorId"
+						[useI18]="false"
+						[validationObject]="{ required: true }"
+					>
+					</textinput>
+				</div>
+				<ng-container *ngIf="hasSubBranches">
+					<div class="col-xs-8 col-md-4 col-lg-2">
+						<div class="button-list button-list-yes-no">
+							<two-option-button
+								[componentLabel]="'label.branch.legalEntity.branch.sub.branch'"
+								[selected]="leaLink.subBranch === true ? 'yes': leaLink.subBranch === false ? 'no' : null"
+								(selectedChange)="subBranch($event)"
+								[validationObject]="{ required:true }"
+							></two-option-button>
+						</div>
+					</div>
+				</ng-container>
+			</div>
+		</form>
+	</div>
+	<div class="foot">
+		<button class="cancel" (click)="showAssociateLeaModal = false">
+			{{'action.cancel' | i18}}
+		</button>
+		<button class="success" (click)="onLegalEntityAuthorizationValidation()">
+			{{(currentLeaTableAction === branchCleArlAction.ADD ? 'label.branch.legalEntity.associate.title' : 'label.branch.legalEntity.update.title') | i18}}
+		</button>
+	</div>
+</modal>
+
+<modal
+	*ngIf="showConfirmDeleteLeaModal"
+	[title]="'label.branch.legalEntity.delete.title' | i18"
+	[(open)]="showConfirmDeleteLeaModal">
+	<div class="body">
+		<h2> {{ 'label.branch.legalEntity.delete.title' | i18 }} </h2>
+		<div class="row">
+			<div class="col-xs-12" >
+				<p> {{'label.branch.legalEntity.delete.message' | i18 }} {{model.leaLinks[0].legalEntityName}} ?</p>
+			</div>
+		</div>
+	</div>
+
+	<div class="foot">
+		<button class="cancel" (click)="showConfirmDeleteLeaModal = false">
+			{{'label.no' | i18}}
+		</button>
+		<button class="success" (click)="onDeleteLegalEntityAuthorization()">
+			{{'label.yes' | i18}}
+		</button>
+	</div>
+</modal>
+
+<modal
+	*ngIf="showLeavePage"
+	[title]="'label.title.cancel' | i18"
+	[(open)]="showLeavePage">
+	<div class="body">
+		<h2> {{'label.title.cancel' | i18}} </h2>
+		<div class="row">
+			<div class="col-md-12">
+				<p> {{'label.title.cancel.information' | i18}} </p>
+			</div>
+		</div>
+	</div>
+	<div class="foot">
+		<button class="cancel" (click)="showLeavePage = false">
+			{{'label.modal.cancel.button.no' | i18}}
+		</button>
+		<button class="success" (click)="modalLeavePage()">
+			{{'label.modal.cancel.button.yes' | i18}}
+		</button>
+	</div>
+</modal>

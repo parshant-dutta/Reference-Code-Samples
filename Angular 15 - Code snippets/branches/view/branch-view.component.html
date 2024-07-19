@@ -1,0 +1,700 @@
+<header>
+	<h1>{{ title }}</h1>
+	<hr/>
+	<status
+		[listData]="statusBar"
+		[level]="'notice'"
+	></status>
+</header>
+
+<tertiary-nav-container [menuItems]="tertNavConfig">
+	<tertiary-nav-section>
+		<h2> {{ 'label.branch.details' | i18}}</h2>
+		<div class="row">
+			<div class="col-xs-12 col-md-6">
+				<textinput
+					[componentLabel]="'label.branch.name'"
+					[ngModel]="model.name"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.code'"
+					[ngModel]="model.code"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.phoneNumber'"
+					[ngModel]="model.phoneNumber"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.faxNumber'"
+					[ngModel]="model.faxNumber"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.internalBranchId'"
+					[ngModel]="model.internalBranchId"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.alternateBranchId'"
+					[ngModel]="model.alternateBranchId"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-3">
+				<datepicker
+						[componentLabel]="'label.branch.dateFrom'"
+						[dateString]="model.fromDate"
+						[readOnly]="true"
+				></datepicker>
+			</div>
+			<div class="col-md-3">
+				<datepicker
+						[componentLabel]="'label.branch.toDate'"
+						[dateString]="model.toDate"
+						[readOnly]="true"
+				></datepicker>
+			</div>
+			<div class="col-md-3">
+				<textinput
+					[componentLabel]="'label.branch.status'"
+					[ngModel]="model.status"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-xs-12 col-md-3 col-lg-3">
+				<textinput
+					[componentLabel]="'label.branch.primaryManagerName'"
+					[ngModel]="model.primaryBranchManager"
+					[readonly]="true"
+				>
+					<user-popup-icon #projectedContentIcon [userId]="model.primaryBranchManagerId"></user-popup-icon>
+				</textinput>
+			</div>
+			<div class="col-xs-12 col-md-3 col-lg-3">
+				<textinput
+					[componentLabel]="'label.branch.osjPerson'"
+					[ngModel]="model.osjPersonNames()"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+
+		<h2> {{ 'label.branch.addresses' | i18}}</h2>
+		<m-address-view
+			[showAddressHeader]="false"
+			[entityId]="model.id"
+			[addressTypeMap]="addressTypeMap"
+		></m-address-view>
+
+		<ng-container *ngIf="hasBranchUserAddress">
+			<ng-container *ngIf="branchUserAddressCount === 1; else buaTableTpl">
+				<h2> {{ 'label.branch.sameAddress.section.title' | i18}}</h2>
+				<div class="row">
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.sameAddress.userFullName'"
+							[ngModel]="branchUserAddress.userFullName"
+							[readonly]="true"
+						>
+							<user-popup-icon #projectedContentIcon [userId]="branchUserAddress.userId"></user-popup-icon>
+						</textinput>
+					</div>
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.sameAddress.userAddressType'"
+							[ngModel]="branchUserAddress.userAddressType"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+				</div>
+			</ng-container>
+			<ng-template #buaTableTpl>
+				<h2> {{ 'label.branch.sameAddress.section.title' | i18}}</h2>
+				<div class="row">
+					<div class="col-xs-12">
+						<m-table
+							[title]="'label.branch.sameAddress.section.title' | i18"
+							[model]="branchUserAddressTableModel"
+							[config]="branchUserAddressTableModelConfig">
+						</m-table>
+					</div>
+				</div>
+			</ng-template>
+		</ng-container>
+
+		<ng-container *ngIf="model.leaLinks?.length > 0">
+			<hr/>
+			<ng-container *ngIf="model.leaLinks.length === 1; else leaTableTpl">
+				<h2> {{ 'label.branch.legalEntity.section.title' | i18}}</h2>
+				<div class="row">
+					<div class="col-xs-12 col-md-6">
+						<textinput
+							[componentLabel]="'label.branch.legalEntity.short.name'"
+							[ngModel]="model.leaLinks[0].legalEntityName"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.legalEntity.regulatory.body.code.name'"
+							[ngModel]="model.leaLinks[0].regulatoryCodeName"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.legalEntity.regulatory.body.name'"
+							[ngModel]="model.leaLinks[0].regulatorBodyName"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.legalEntity.regulatory.lea.code'"
+							[ngModel]="model.leaLinks[0].legalEntityAuthorizationCode"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+					<div class="col-xs-12 col-md-3">
+						<textinput
+							[componentLabel]="'label.branch.legalEntity.regulatory.lea.name'"
+							[ngModel]="model.leaLinks[0].legalEntityAuthorizationName"
+							[readonly]="true"
+						>
+						</textinput>
+					</div>
+					<div class="col-xs-12 col-md-5">
+						<textinput
+							[componentLabel]=legalEntityAuthorizationNumberLabel
+							[ngModel]="model.leaLinks[0].legalEntityAuthorizationNumber"
+							[readonly]="true"
+							[useI18]="false"
+						>
+						</textinput>
+					</div>
+				</div>
+				<hr>
+				<h2> {{ 'label.branch.cle.keyBranchInfo.view' | i18}}</h2>
+				<div class="row">
+					<div class="col-xs-12 col-md-5">
+						<textinput
+							[componentLabel]=branchRegulatorIdLabel
+							[ngModel]="model.leaLinks[0].branchRegulatorId"
+							[readonly]="true"
+							[useI18]="false"
+						>
+						</textinput>
+					</div>
+					<div class="col-xs-8 col-md-4 col-lg-4">
+						<div class="button-list button-list-yes-no">
+							<two-option-button
+								[componentLabel]="'label.branch.legalEntity.branch.sub.branch'"
+								[selected]="model.leaLinks[0].subBranch? 'yes':'no'"
+								[readOnly]="true"
+							></two-option-button>
+						</div>
+					</div>
+				</div>
+			</ng-container>
+			<ng-template #leaTableTpl>
+				<h2> {{ 'label.branch.legalEntity.section.table.title' | i18}}</h2>
+				<div class="row">
+					<div class="col-xs-12">
+						<m-table
+							[title]="'label.branch.legalEntity.section.table.title' | i18"
+							[config]="{
+								columnToggle: true,
+								columnResize: true
+							}"
+							[model]="leaLinkTableModel">
+						</m-table>
+					</div>
+				</div>
+			</ng-template>
+		</ng-container>
+
+		<ng-container *ngIf="hasCustomFields">
+			<hr>
+			<h2>{{ 'label.customClassifications' | i18 }}</h2>
+			<custom-fields
+				#customFields
+				[subjectId]="model.id"
+				[readOnly]="true"
+				[event]="customFieldEvent">
+			</custom-fields>
+		</ng-container>
+
+		<ng-container *ngIf="showFinra">
+		<hr>
+		<h2> {{ 'label.branch.activitiesHeading' | i18}}</h2>
+		<div class="row">
+			<div class="col-xs-8 col-md-8 col-lg-4">
+				<textinput
+					[componentLabel]="'label.branch.firmBillingCode'"
+					[ngModel]="model.firmBillingCode"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+			<div class="col-xs-8 col-md-8 col-lg-4">
+				<dropdown
+					[list]="branchTypes"
+					[ngModel]="model.branchType"
+					[componentLabel]="'label.branch.type'"
+					[validationObject]="{required: true}"
+					[readOnly]="true"
+				>
+				</dropdown>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-xs-8 col-md-4 col-lg-4">
+				<div class="button-list button-list-yes-no">
+					<two-option-button
+						[componentLabel]="'label.branch.officeSupervisoryJurisdiction'"
+						[selected]="model.officeSupervisoryJurisdiction ? 'yes':'no'"
+						[readOnly]="true"
+					></two-option-button>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-9" *ngIf="!model.officeSupervisoryJurisdiction">
+				<textinput
+					[componentLabel]="'label.branch.osjBranch'"
+					[ngModel]="model.osjBranchName"
+					[readonly]="true"
+				>
+				</textinput>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-xs-12 col-md-8 col-lg-6">
+				<h4>{{'label.branch.activities'|i18}}</h4>
+			</div>
+		</div>
+		<ng-container *ngFor="let activity of model.branchActivities">
+			<div class="row">
+				<div class="col-xs-12 col-md-8 col-lg-4">
+					<dropdown
+						[list]="branchActivities"
+						[ngModel]="activity"
+						[readOnly]="true"
+					></dropdown>
+				</div>
+			</div>
+		</ng-container>
+	</ng-container>
+	</tertiary-nav-section>
+
+	<tertiary-nav-section>
+		<h2>{{'label.branch.reps' | i18}}</h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-table
+					[model]="repTable"
+					[title]="'label.branch.reps' | i18"
+					[config]="repTableConfig"
+					(actionButtonClick)="handleBranchRepActionClick($event)"
+				>
+					<button
+						*ngIf="permissions?.addRepToBranch"
+						class="primary add-btn thin"
+						(click)="openBranchCleArlRepModal(branchCleArlRepPopupActions.ADD)"
+					>
+						{{ 'label.branch.reps.add' | i18 }}
+					</button>
+				</m-table>
+			</div>
+		</div>
+	</tertiary-nav-section>
+
+	<modal
+		*ngIf="permissions?.addRepToBranch && showBranchCleArlRepPopup"
+		[title]="(branchCleArlRepPopupAction === branchCleArlRepPopupActions.ADD ? 'label.branch.reps.add.title' : 'label.branch.reps.update.title') | i18"
+		[(open)]="showBranchCleArlRepPopup">
+		<div class="body">
+			<div *ngIf="branchCleArlRepPopupAction === branchCleArlRepPopupActions.ADD; else elseBlock">	<h2> {{'label.branch.reps.add.title' | i18}} {{model.name}}</h2></div>
+			<ng-template #elseBlock> <h2> {{'label.branch.reps.update.title' | i18}}</h2></ng-template>
+			<form
+				ngNoForm
+				#branchCleArlRepForm
+				[attr.id]="branchCleArlRepFormId"
+				(submit)="$event.preventDefault()">
+				<div class="row">
+					<div class="col-md-4">
+						<search-input
+							[componentLabel]="'label.branch.rep'"
+							[selectedString]="branchCleArlRep.userText"
+							[selected]="branchCleArlRep.userId"
+							[data]="userPicker"
+							(selectedChange)="onUserSelected($event)"
+							[validationObject]="{required: true}"
+							[readonly]="branchCleArlRepPopupAction===branchCleArlRepPopupActions.UPDATE"
+						>
+						</search-input>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-xs-12 col-md-8">
+						<search-input
+							[componentLabel]="'label.branch.legalEntity.companyLegalEntityArl'"
+							[data]="branchCleArlLinkPicker"
+							[selectedString]="branchCleArlRep.linkText"
+							[selected]="branchCleArlRep.linkId"
+							(selectedChange)="onBranchCleArlLinkSelected($event)"
+							[externalFilter]="model.id"
+							[validationObject]="{required: true}"
+							[readonly]="branchCleArlRepPopupAction===branchCleArlRepPopupActions.UPDATE"
+						>
+						</search-input>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-xs-12 col-md-4">
+						<datepicker
+							[componentLabel]="'label.branch.rep.occupiedFrom'"
+							[(dateString)]="branchCleArlRep.occupiedFrom"
+							[validationObject]="{required: false}"
+							(change)="onOccupiedFromChange($event)"
+						></datepicker>
+					</div>
+					<div class="col-xs-12 col-md-4">
+						<datepicker
+							[componentLabel]="'label.branch.rep.occupiedTo'"
+							[(dateString)]="branchCleArlRep.occupiedTo"
+							[validationObject]="{required: false, minValue: branchCleArlRep.occupiedFrom}"
+						></datepicker>
+					</div>
+				</div>
+			</form>
+		</div>
+		<div class="foot">
+			<button class="cancel" (click)="onCancelAddRepModal()">
+				{{'action.cancel' | i18}}
+			</button>
+			<button class="success" (click)="onBranchCleArlRepModalSubmit()">
+				{{(branchCleArlRepPopupAction === branchCleArlRepPopupActions.ADD ? 'label.branch.rep.action.add' : 'label.branch.rep.action.update') | i18}}
+			</button>
+		</div>
+	</modal>
+
+
+	<tertiary-nav-section>
+		<h2>{{'label.branch.group.associate' | i18}}</h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-table
+					[model]="groupTable"
+					[title]="'label.branch.group.associate' | i18"
+					[config]="groupTableConfig"
+					(rowClick)="showGroupMemberModal($event)"
+					(actionButtonClick)="handleDeleteActionTableClick('GROUP', $event)"
+				>	<!-- Neelima, how this can work? externalFilterPicker="true ". The type of
+					externalFilterPicker is a tring and you are passing a string. With the new
+					compiler option this code will not compile. I am casting to $any because I think at
+					least this code at runtime is correct -->
+					<dual-list-selection-modal *ngIf="permissions?.associateGroupsWithBranches"
+											   [configuration]="groupDualListConfig"
+											   [searchLabel]="'label.select.one.or.more.groups'"
+											   [tableLabel]="'label.groups.already.selected'"
+											   [tableEmptyLabel]="'label.list.noGroupsSelected'"
+											   [modalTitle]="'label.branch.group.associate.title'"
+											   [modalButtonLabel]="'label.branch.group.associate.action'"
+											   [externalFilterPicker]="$any(true)"
+											   [searchPickerStructure]="groupPicker"
+											   [hasTableButton]="true"
+											   [(openModal)]="showAssociateGroupPopup"
+											   (selectedChange)="associateGroups($event)"
+					>
+					</dual-list-selection-modal>
+				</m-table>
+			</div>
+		</div>
+	</tertiary-nav-section>
+
+	<tertiary-nav-section>
+		<h2>{{'label.comments' | i18}}</h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-table
+					[model]="commentsTable"
+					[title]="'label.comments' | i18"
+					[config]="commentsTableConfig"
+				>
+					<button	*ngIf="permissions?.commentBranch"
+							   class="thin primary"
+							   (click)="showAddCommentPopup = true"
+					>
+						{{ 'action.comment' | i18 }}
+					</button>
+				</m-table>
+			</div>
+		</div>
+	</tertiary-nav-section>
+
+	<tertiary-nav-section>
+		<h2> {{'title.viewAttachments'|i18}} </h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-attachment-table
+					[entityId]="model.id"
+					[entityType]="'BRANCH'"
+					[readOnly]="!permissions?.addAttachmentsToBranch"
+					(attachmentsChanged)="attachmentsChanged($event, true)"
+					(attachmentsLoaded)="attachmentsChanged($event, false)"
+				></m-attachment-table>
+			</div>
+		</div>
+	</tertiary-nav-section>
+
+	<tertiary-nav-section>
+		<h2> {{'title.viewHistory'|i18}} </h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-table
+					[model]="historyTable"
+					[title]="'title.viewHistory' | i18"
+					[config]="tableConfig">
+					<ng-template customColumn
+								 [colRelation]="'auditLogEntries'"
+								 [colFields]="['auditLogEntries', 'comment', 'auditActionType', 'commentClassification', 'auditActionTypeView']"
+								 let-cellData>
+						<m-custom-history-field [data]="cellData"></m-custom-history-field>
+					</ng-template>
+				</m-table>
+			</div>
+		</div>
+	</tertiary-nav-section>
+</tertiary-nav-container>
+
+<floating-bar>
+	<div class="submit-options">
+		<button-return-to-list></button-return-to-list>
+		<button *ngIf="permissions?.deleteBranch"
+				class="primary"
+				(click)="showConfirmDeleteModal()"
+		>
+			{{'action.delete' | i18}}
+		</button>
+		<button *ngIf="permissions?.updateBranch"
+				class="success"
+				(click)="edit()"
+		>
+			{{'action.edit' | i18}}
+		</button>
+	</div>
+</floating-bar>
+
+<modal
+	*ngIf="showConfirmDelete"
+	[title]="deleteModalTemplate.title | i18"
+	[(open)]="showConfirmDelete">
+    <div class="body">
+        <h2 *ngIf="deleteModalTemplate.entity !== 'REP' || !deleteModalTemplate.hasBranchAddress">
+            {{ deleteModalTemplate.title | i18 }}
+        </h2>
+        <form
+                ngNoForm
+                *ngIf="deleteModalTemplate.entity === 'REP' && deleteModalTemplate.hasBranchAddress"
+                #deleteRepForm
+                [attr.id]="deleteRepFormId"
+                (submit)="$event.preventDefault()">
+            <div class="row">
+                <div class="col-md-12">
+                    <header>
+                        <h1> {{ 'label.branch.delete.associatedRep.header' | i18 }} </h1>
+                        <hr/>
+                    </header>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <h1> {{ 'label.branch.delete.associatedRep.confirmation' | i18 }} </h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <info-box [level]="'info'" style="font-weight:bold;">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h2>{{ 'label.attention' | i18 }}</h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>{{ 'label.branch.delete.associatedRep.info' | i18 }}</p>
+                            </div>
+                        </div>
+                    </info-box>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-md-6 col-lg-4">
+                    <p style="font-weight:bold;"> {{ 'label.branch.delete.associatedRep.specifyDate' | i18 }} </p>
+                    <two-option-button
+                            [selected]="'yes'"
+                            (selectedChange)="onChangeShowDate($event)"
+                    ></two-option-button>
+                </div>
+                <div class="col-xs-12 col-md-6 col-lg-4" *ngIf="setToDateOnDeleteRep">
+                    <p style="font-weight:bold;"> {{ 'label.branch.delete.associatedRep.dateBranchAddressCeased' | i18 }} </p>
+                    <datepicker
+                            [(dateString)]="toDateStringOnDeletedRep"
+                            [validationObject]="{ maxValue: 'now', required: true  }"
+                    ></datepicker>
+                </div>
+            </div>
+        </form>
+        <div class="row" *ngIf="deleteModalTemplate.entity !== 'REP' || !deleteModalTemplate.hasBranchAddress">
+            <div class="col-xs-12" >
+                <p> {{ deleteModalTemplate.message | i18 }} </p>
+            </div>
+        </div>
+    </div>
+    <div class="foot">
+        <button class="cancel" (click)="resetModals()">
+            {{ 'label.cancel' | i18 }}
+        </button>
+        <button class="success" (click)="onDelete()">
+			{{ 'action.confirm' | i18 }}
+        </button>
+    </div>
+</modal>
+
+<modal
+        *ngIf="showConfirmAddAssociatedRep"
+        [(open)]="showConfirmAddAssociatedRep"
+        [title]="'label.branch.address.addToRep.header' | i18">
+    <div class="body">
+        <div class="row">
+            <div class="col-md-12">
+                <header>
+                    <h1> {{ 'label.branch.address.addToRep.header' | i18 }} </h1>
+                    <hr/>
+                </header>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <info-box [level]="'info'" style="font-weight:bold;">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h2>{{ 'label.attention' | i18 }}</h2>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>{{ 'label.branch.address.addToRep.attention' | i18 }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>{{ 'label.branch.address.addToRep.selectYes' | i18 }}</p>
+                        </div>
+                    </div>
+                </info-box>
+            </div>
+        </div>
+        <div class="row" style="font-weight:bold;">
+            <div class="col-md-12">
+                <p>{{ 'label.branch.address.addToRep.twoOption' | i18 }}</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-md-6 col-lg-4">
+                <two-option-button
+                        [selected]="'yes'"
+                        (selectedChange)="branchCleArlRep.shouldAddBranchAddressToRep = $event === 'yes'"
+                ></two-option-button>
+            </div>
+        </div>
+    </div>
+    <div class="foot">
+        <button class="cancel" (click)="resetModals()">
+            {{ 'label.cancel' | i18 }}
+        </button>
+        <button class="success" (click)="onConfirmAddAssociatedRep()">
+            {{ 'label.branch.rep.action.add' | i18 }}
+        </button>
+    </div>
+</modal>
+
+<modal
+	*ngIf="showGroupMember"
+	[title]="'label.branch.group.member.associate.title' | i18"
+	[(open)]="showGroupMember">
+	<div class="body">
+		<header>
+			<h1>{{ selectedGroupName }}</h1>
+			<hr>
+		</header>
+		<h2>{{'label.branch.group.member.associate.title'|i18}}</h2>
+		<div class="row">
+			<div class="col-xs-12">
+				<m-table
+					[title]="'label.branch.group.member.associate.title' | i18"
+					[config]="membersTableConfig"
+					[model]="membersTable"
+				>
+				</m-table>
+			</div>
+		</div>
+	</div>
+	<div class="foot">
+		<button class="success" (click)="showGroupMember = false">
+			{{'label.close' | i18}}
+		</button>
+	</div>
+</modal>
+
+<modal-add-comment
+	[open]="showAddCommentPopup"
+	(openChange)="showAddCommentPopup = $event"
+	[entityId]="model.id"
+	[entityType]="'BRANCH'"
+	[addCommentUrl]="addCommentUrl"
+	[showCommentClassification]="commentClassificationConfigEnabled"
+	[commentClassifications]="commentClassifications"
+	(afterExecution)="commentAdded()"
+>
+</modal-add-comment>

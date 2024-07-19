@@ -1,0 +1,17 @@
+<h1>{{title | i18}}</h1>
+
+<m-table
+	[model]  = "branchesTable"
+	[title]="title | i18"
+	[config] = "tableConfig"
+	[gaLabel]= "'Branches'"
+	(rowClick)="tableRowClick($event)"
+>
+	<button
+		*ngIf="canAddNew"
+		class = "thin success"
+		(click) = "create()"
+	>
+		{{ 'label.branch.add' | i18 }}
+	</button>
+</m-table>

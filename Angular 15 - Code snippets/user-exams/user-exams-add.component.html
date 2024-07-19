@@ -1,0 +1,293 @@
+<header>
+    <h1>{{ title }}</h1>
+    <hr/>
+    <p>{{ 'label.form.instruction' | i18 }}</p>
+</header>
+
+<h2 class="section-title"> {{ 'label.userExams' | i18}}</h2>
+<form
+        ngNoForm
+        #userExamsForm
+        [attr.id]="userExamsFormId"
+        (submit)="$event.preventDefault()"
+>
+    <div *ngIf="management" class="row">
+        <div class="col-sm-12 col-md-8 col-lg-6">
+            <search-input
+                    [componentLabel]="'label.userExams.user'"
+                    [data]="userPicker"
+                    [selectedString]="model.user?.fullName"
+                    [placeholder]="'label.placeholder.selection'"
+                    (selectedChange)="userSelected($event)"
+                    [validationObject]="{required: true}"
+                    [selected]="model.user"
+            >
+            </search-input>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <div class="col-sm-12 col-md-8 col-lg-6">
+            <search-input
+                #regulatoryAuthorityNameSearchInput
+                [componentLabel]="'label.userExams.regulatorAuthority'"
+                [data]="regulatoryBodyPicker"
+                [selectedString]="model?.regulatoryBody?.name"
+                [placeholder]="'label.placeholder.selection'"
+                (selectedChange)="regulatoryBodySelected($event)"
+                [selected]="(model.regulatoryBody)"
+                [validationObject]="{required: true}"
+            >
+            </search-input>
+        </div>
+    </div>
+    <div *ngIf="model.regulatoryBody" class="row">
+        <div class="col-sm-6">
+            <search-input
+                #examSearchInput
+                [externalFilter]="model.regulatoryBody?.id"
+                [componentLabel]="'label.userExams.userExam'"
+                [data]="examsSearchStructure"
+                [selectedString]="model?.exam?.name"
+                [placeholder]="'label.placeholder.selection'"
+                (selectedChange)="examBodySelected($event)"
+                [selected]="model?.exam?.name"
+                [validationObject]="{required: true}"
+            >
+            </search-input>
+        </div>
+        <div class="col-sm-2">
+            <textinput
+                    componentLabel="label.userExams.examCode"
+                    [ngModel]="model.exam?.code"
+                    [textarea]="false"
+                    [placeholder]="'label.placeholder.selection'"
+                    [readonly]="true"
+            >
+            </textinput>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-3">
+            <textinput
+                    componentLabel="label.userExams.enrollmentId"
+                    [(ngModel)]="model.enrollmentId"
+                    [textarea]="false"
+                    [placeholder]="'label.placeholder.selection'"
+                    [readonly]="false"
+            >
+            </textinput>
+        </div>
+    </div>
+    <div class="row">
+        <div *ngIf="showBeginDate" class="col-sm-3">
+            <datepicker
+                    componentLabel="label.userExams.windowBeginDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.windowBeginDate"
+                    (change)="datePropertyChange('windowBeginDate',$event)"
+            >
+            </datepicker>
+        </div>
+        <div *ngIf="showEndDate" class="col-sm-3">
+            <datepicker
+                    #dateReceivedComponent
+                    componentLabel="label.userExams.windowEndDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.windowEndDate"
+                    (change)="datePropertyChange('windowEndDate',$event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <hr/>
+    <h2 class="section-title"> {{ 'label.userExams.examStatus' | i18}}</h2>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <dropdown
+                    [componentLabel]="'label.userExams.finraExamStatus'"
+                    [list]="finraExamStatuses | async"
+                    [labelValue]="'value'"
+                    [placeholder]="'label.placeholder.selection'"
+                    [ngModel]="model.finraExamStatus"
+                    (modelChange)="setFinraExamStatus($event)"
+            ></dropdown>
+        </div>
+        <div class="col-sm-12 col-md-3">
+            <dropdown
+                    [componentLabel]="'label.userExams.result'"
+                    [list]="userExamStatuses | async"
+                    [labelValue]="'value'"
+                    [placeholder]="'label.placeholder.selection'"
+                    [ngModel]="model.status"
+                    (modelChange)="setUserExamStatus($event)"
+            ></dropdown>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.statusDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.statusDate"
+                    (change)="datePropertyChange('statusDate',$event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <textinput
+                    componentLabel="label.userExams.score"
+                    [(ngModel)]="model.score"
+                    [textarea]="false"
+                    [placeholder]="'label.placeholder.selection'"
+                    [readonly]="false"
+            >
+            </textinput>
+        </div>
+    </div>
+    <hr/>
+    <h2 class="section-title"> {{ 'label.userExams.examDates' | i18}}</h2>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.firstApplicationDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.firstApplicationDate"
+                    (change)="datePropertyChange('firstApplicationDate',$event)"
+            >
+            </datepicker>
+        </div>
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.firstCompletionDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.firstCompletionDate"
+                    (change)="datePropertyChange('firstCompletionDate',$event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.lastCompletionDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.lastCompletionDate"
+                    (change)="datePropertyChange('lastCompletionDate',$event)"
+            >
+            </datepicker>
+        </div>
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.nextDueDate"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.nextDueDate"
+                    (change)="datePropertyChange('nextDueDate',$event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <hr/>
+    <h2 class="section-title"> {{ 'label.userExams.waivers' | i18}}</h2>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.waiverApplied"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.waiverApplied"
+                    (change)="datePropertyChange('waiverApplied',$event)"
+            >
+            </datepicker>
+        </div>
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.waiverResponse"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.waiverResponse"
+                    (change)="datePropertyChange('waiverResponse',$event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+
+            <dropdown
+                    [componentLabel]="'label.userExams.waiverStatus'"
+                    [list]="waiverStatuses | async"
+                    [labelValue]="'value'"
+                    [placeholder]="'label.placeholder.selection'"
+                    [ngModel]="model.waiverStatus"
+                    (modelChange)="setWaiverStatus($event)"
+            ></dropdown>
+        </div>
+        <div class="col-sm-12 col-md-3">
+            <dropdown
+                    [componentLabel]="'label.userExams.waiverReason'"
+                    [list]="waiverReasons | async"
+                    [labelValue]="'value'"
+                    [placeholder]="'label.placeholder.selection'"
+                    [ngModel]="model.waiverReason"
+                    (modelChange)="setWaiverReason($event)"
+            ></dropdown>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 col-md-3">
+            <datepicker
+                    componentLabel="label.userExams.dateExamWaived"
+                    [placeholder]="'label.placeholder.selection'"
+                    [dateString]="model.dateExamWaived"
+                    (change)="datePropertyChange('dateExamWaived', $event)"
+            >
+            </datepicker>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-6">
+            <textinput
+                    componentLabel="label.userExams.waiverInfo"
+                    [(ngModel)]="model.waiverInfo"
+                    [textarea]="true"
+                    [placeholder]="'label.placeholder.selection'"
+                    [readonly]="false"
+            >
+            </textinput>
+        </div>
+    </div>
+
+</form>
+<floating-bar>
+    <div class="submit-options">
+		<button-return-to-list></button-return-to-list>
+        <button  class="success"
+                (click)="save()"
+        > {{ (edit ? 'action.save' : 'action.submit') | i18}}
+		</button>
+    </div>
+</floating-bar>
+
+<modal
+	*ngIf="showLeavePage"
+	[title]="'label.title.cancel' | i18"
+	[(open)]="showLeavePage">
+	<div class="body">
+		<h2> {{ 'label.title.cancel' | i18 }} </h2>
+		<div class="row">
+			<div class="col-md-12">
+				<p> {{'label.title.cancel.information' | i18}} </p>
+			</div>
+		</div>
+	</div>
+	<div class="foot">
+		<button class="cancel" (click)="modalLeavePage(false)">
+			{{'label.modal.cancel.button.no' | i18}}
+		</button>
+		<button class="success" (click)="modalLeavePage(true)">
+			{{'label.modal.cancel.button.yes' | i18}}
+		</button>
+	</div>
+</modal>
