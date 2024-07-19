@@ -1,0 +1,424 @@
+#######Video calling feature#######
+
+
+
+
+## remote-stream.component.ts
+
+import { Component, ComponentRef, Input, OnDestroy, OnInit, ViewChild, ViewContainerRef } from '@angular/core';
+import { Router } from '@angular/router';
+import { IAgoraRTCClient, IAgoraRTCRemoteUser, UID } from 'agora-rtc-sdk-ng';
+import { StorageService } from '../../../core/services/storage/storage.service';
+import { Unsubscriber } from '../../../core/utils/unsubscriber';
+import { AgoraService } from '../../services/agora/agora.service';
+import { ControlsService } from '../../services/controls/controls.service';
+import { SocketService } from '../../services/socket/socket.service';
+import { RemotePatientComponent } from '../remote-patient/remote-patient.component';
+import { RemoteUserComponent } from '../remote-user/remote-user.component';
+
+@Component({
+  selector: 'm-app-remote-stream',
+  standalone: true,
+  imports: [],
+  templateUrl: './remote-stream.component.html',
+  styleUrl: './remote-stream.component.scss'
+})
+
+export class RemoteStreamComponent extends Unsubscriber implements OnInit, OnDestroy {
+  @Input() aptId!: string;
+  @ViewChild('remoteVideoContainer', { read: ViewContainerRef }) remoteVideoContainer!: ViewContainerRef;
+  onReady?: (element: HTMLElement) => void;
+  client: IAgoraRTCClient;
+  remoteUserComponentRefs: Map<string, ComponentRef<any>>;
+  uid!: UID;
+  userData: any;
+  userCount: number = 0;
+  agoraData: any;
+
+  constructor(
+    private _agoraService: AgoraService,
+    private _controlsService: ControlsService,
+    private _storage: StorageService,
+    private _socket: SocketService,
+    private _agora: AgoraService,
+    private _router: Router
+  ) {
+    super();
+    this.userData = this._storage.getUserData();
+    this.agoraData = this._storage.getAgoraData();
+    this.client = this._agoraService.getClient()
+    this.remoteUserComponentRefs = new Map();
+    this._controlsService.disableSidebarHeader.next(true);
+    this.subscription.add(this._socket.handleCallAbort.subscribe((res: any) => {
+      this.agoraData = this._storage.getAgoraData();
+      if (res) {
+        if (res.data.by == 'admin') {
+          let uidData = {
+            uid: this.agoraData?.admin?.admin_id
+          }
+          this.removeComponent(uidData)
+        } else {
+          this._agora.leaveChannel();
+          this.client.leave();
+          this.userData.role !== 30001 ? this._router.navigate(['/main/call-container'], { state: { aptId: this.agoraData?.appointment_id, from: 'video_call' } }) : this._router.navigate(['/main/dashboard']);
+        }
+      }
+    }));
+  }
+
+  ngOnInit(): void {
+    this.client.on('user-published', this.handleRemoteUserPublished)
+    this.client.on('user-unpublished', this.handleRemoteUserUnpublished)
+  }
+
+  override ngOnDestroy(): void {
+    this.client.off('user-published', this.handleRemoteUserPublished)
+    this.client.off('user-unpublished', this.handleRemoteUserUnpublished)
+    this.agoraData = null;
+    this.userData = null;
+    this.client.leave();
+    this.clearRemoteUsers();
+    location.reload();
+  }
+
+  private handleRemoteUserPublished = async (user: any, mediaType: "audio" | "video" | "datachannel") => {
+    this.agoraData = this._storage.getAgoraData();
+    await this.client.subscribe(user, mediaType)
+    if (mediaType === 'audio') user.audioTrack?.play()
+    else if (mediaType === 'video') {
+      this.removeComponent(user);
+      const uid = user.uid;
+      this._agoraService.isRemoteUserConnected = true;
+      if (uid == (this.agoraData?.doctor && this.agoraData?.doctor?.dr_id) || uid == (this.agoraData?.admin && this.agoraData?.admin?.admin_id)) {
+        const remoteUserComponentRef: ComponentRef<RemoteUserComponent> = this.remoteVideoContainer.createComponent(RemoteUserComponent)
+        remoteUserComponentRef.instance.uid = uid;
+        remoteUserComponentRef.instance.aptId = this.aptId;
+        remoteUserComponentRef.instance.onReady = (remoteUserDiv: any) => {
+          user.videoTrack?.play(remoteUserDiv)
+        }
+        this.remoteUserComponentRefs.set(uid.toString(), remoteUserComponentRef)
+      }
+      else {
+        const uid = user.uid;
+        const remoteUserComponentRef: ComponentRef<RemotePatientComponent> = this.remoteVideoContainer.createComponent(RemotePatientComponent)
+        remoteUserComponentRef.instance.uid = uid;
+        remoteUserComponentRef.instance.aptId = this.aptId;
+        remoteUserComponentRef.instance.onReady = (remoteUserDiv: any) => {
+          this._controlsService.remoteStreamData.next(user);
+        }
+        this.remoteUserComponentRefs.set(uid.toString(), remoteUserComponentRef)
+      }
+    }
+  }
+
+  private handleRemoteUserUnpublished = async (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video" | "datachannel") => {
+    if (mediaType === 'video') this._agoraService.isUserVideoMute.next(user)
+  }
+
+  private removeComponent(user: any) {
+    this._agoraService.isRemoteUserVideoMute = true;
+    const remoteUserUid = user.uid.toString();
+    const componentRef = this.remoteUserComponentRefs.get(remoteUserUid);
+    if (componentRef) {
+      const viewIndex = this.remoteVideoContainer.indexOf(componentRef?.hostView);
+      this.remoteVideoContainer.remove(viewIndex);
+      this.remoteUserComponentRefs.delete(remoteUserUid);
+    }
+  }
+
+  clearRemoteUsers(): void {
+    this.remoteVideoContainer.clear();
+    this.remoteUserComponentRefs.clear();
+  }
+
+}
+
+
+
+
+
+## remote-stream.component.html
+
+  <div id="remote-video-container">
+    <ng-container #remoteVideoContainer ></ng-container>
+  </div>
+
+
+
+
+
+
+
+
+
+## remote-user.component.ts
+
+import { AfterViewInit, Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
+import { UID } from 'agora-rtc-sdk-ng';
+import { DynamicDialogRef } from 'primeng/dynamicdialog';
+import { CommonService } from '../../../core/services/storage/common.service';
+import { StorageService } from '../../../core/services/storage/storage.service';
+import { Unsubscriber } from '../../../core/utils/unsubscriber';
+import { AgoraService } from '../../services/agora/agora.service';
+import { SharedModule } from '../../shared.module';
+
+@Component({
+  selector: 'm-app-remote-user',
+  standalone: true,
+  imports: [SharedModule],
+  templateUrl: './remote-user.component.html',
+  styleUrl: './remote-user.component.scss'
+})
+export class RemoteUserComponent extends Unsubscriber implements OnInit, AfterViewInit {
+  @Input() uid!: UID;
+  @Input() aptId!: string;
+  @Input() onReady?: (element: HTMLElement) => void;
+  @ViewChild('remoteVideo') remoteVideo!: ElementRef<HTMLElement>;
+  showSpinner: boolean = false;
+  showDummyImage: boolean = false;
+  ref: DynamicDialogRef | undefined;
+  remoteUserData: any = {};
+  nameInitials: string = '';
+
+  constructor(
+    private elementRef: ElementRef,
+    public _agoraService: AgoraService,
+    private _commonService: CommonService,
+    private _store: StorageService
+  ) {
+    super();
+    this.subscription.add(this._agoraService.isUserVideoMute$.subscribe((data: any) => {    //to handle if user mute
+      if (data.uid == this.uid) this.showDummyImage = true;
+    }))
+  }
+
+  ngOnInit(): void {
+    const parentElement = this.elementRef.nativeElement.parentElement;   //fetch the dom element
+    const aptIdElement = parentElement.querySelector('aptId');
+    if (aptIdElement) this.aptId = aptIdElement.dataset.aptId;
+  }
+
+  ngAfterViewInit(): void {
+    if (this.onReady) {
+      this.onReady(this.remoteVideo.nativeElement)
+      this.fetchRemoteUserData()
+    }
+  }
+
+  fetchRemoteUserData() {      // fetch and show other remote user's details
+    let agoraData = this._store.getAgoraData();
+    if (this.uid == agoraData?.doctor?.dr_id) this.remoteUserData = agoraData.doctor;
+    else if (this.uid == agoraData?.patient.patient_id) this.remoteUserData = agoraData.patient;
+    else this.remoteUserData = agoraData.admin;
+    this.nameInitials = this._commonService.getInitials(this.remoteUserData?.user_name);
+  }
+
+
+
+
+
+
+##remote-user.component.html
+
+<div id="remote-user-{{uid}}-container" class="remote-video-container">
+  <p class="m-remote-user-name">{{remoteUserData?.user_name}}</p>
+    <div #remoteVideo id="remote-user-{{uid}}-video" class="remote-video"></div>
+    
+    <div *ngIf="showSpinner == true" class="m-loader-wrapper">
+      <div  class="m-progress-spinner">
+        <div  class="m-progress-spinner-circle"></div>
+      </div>
+    </div>
+
+  <div *ngIf="showDummyImage" class="m-user-image-wrapper">
+    <div class="m-user-image-inner">
+        <div class="m-user-name">{{nameInitials}}</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+###### socket.service.ts ######
+
+import { Injectable } from '@angular/core';
+import { Socket } from 'ngx-socket-io';
+import { Observable, Subscription, interval } from 'rxjs';
+import { StorageService } from '../../../core/services/storage/storage.service';
+import { StorageKeys } from '../../../core/utils/storage-keys';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class SocketService {
+  reconnectSubscription: Subscription | null = null;
+
+  currentMessage = this.socket.fromEvent<any>('sendMessage');
+  currentGroupMessage = this.socket.fromEvent<any>('sendGroupMessage');
+  getTyping = this.socket.fromEvent<any>('typing');
+  getStopTyping = this.socket.fromEvent<any>('stopTyping');
+  getNewNotification = this.socket.fromEvent<any>('newNotification');
+  getNotificationRead = this.socket.fromEvent<any>('readNotification');
+  keepAliveSubscription!: Subscription;
+
+  getRinging = this.socket.fromEvent<any>('ringing');      // To handle the ringing modals of doctor and patient.
+  handleCallAccepted = this.socket.fromEvent<any>('handleCallAccepted');       //To handle the event of call accept by patient.
+  handleCallDisconnected = this.socket.fromEvent<any>('handleCallDisconnected');        // To handle the call disconnection on ringing modals.
+  handleCallAbort = this.socket.fromEvent<any>('handleCallAbort');         //To handle the call leave when joined video call.
+  handleAdminJoinedRoom = this.socket.fromEvent<any>('joinedRoom');           // To handle and update data when admin joins call.
+  onShowCallBtn = this.socket.fromEvent<any>('showCallBtn');           // To handle updated calls on dashboard.
+  onHandleMarkAsComplete = this.socket.fromEvent<any>('markAsComplete');      //To handle the mark as complete event on dashboard.
+  onHandlePatientFeedback = this.socket.fromEvent<any>('patientFeedback');     //To handle and open patient feedback.
+  onHandleComputerVision = this.socket.fromEvent<any>('onComputerVision')      // To handle the computer vision start/stop on patient side.
+  getUpdatedAdminCalls = this.socket.fromEvent<any>('getUpdatedAdminCalls'); //To handle the ongoing video calls on the admin side
+  handlePatientVideoMute = this.socket.fromEvent<any>('isPatientVideoMute')
+
+  constructor(public socket: Socket, private _store: StorageService) {
+    this.socket.on('connect', () => {
+      console.log('socket connected', this.socket.ioSocket.id);
+      if(this.reconnectSubscription) this.reconnectSubscription.unsubscribe();
+    });
+    
+    this.socket.on('disconnect', () => {
+      console.log('socket disconnected');
+      const userId = this._store.get(StorageKeys.userInfo)?.userId;
+      if (userId && !this.reconnectSubscription) {
+        this.reconnectSubscription = interval(1000).subscribe(() => {
+          console.log('Attempting to reconnect...');
+          this.socket.connect();
+        });
+      }
+    });
+    
+    this.keepAliveSubscription = interval(10000).subscribe(() => {
+      this.socket.emit('keepalive', { message: 'ping' });
+    });
+  }
+
+  onDisconnect() {
+    this.socket.disconnect();
+  }
+
+  sendMessage(type: string, message: any): void {
+    let obj = {
+      event: type,
+      data: message
+    }
+    this.socket.emit(type, obj);
+  }
+
+  onTyping(payload: any) {
+    this.socket.emit('typing', payload);
+  }
+
+  onStopTyping(payload: any) {
+    this.socket.emit('stopTyping', payload);
+  }
+
+  notificationRead(notificationId: any) {
+    this.socket.emit('readNotification', notificationId);
+  }
+
+  onHandleCallAccepted(id: string) {
+    this.socket.emit('handleCallAccepted', id)
+  }
+
+  onHandleCallDisconnected(id: any) {
+    this.socket.emit('handleCallDisconnected', id)
+  }
+
+  onHandleCallAbort(data: any) {
+    this.socket.emit('handleCallAbort', data)
+  }
+
+  onHandleComputerVisionEmit(data: any) {
+    this.socket.emit('onComputerVision', data);
+  }
+
+  onHandlePatientVideoMuteEmit(data: any) {
+    this.socket.emit('isPatientVideoMute', data);
+  }
+
+  onLogout(): Observable<string> {
+    return new Observable<string>((observer) => {
+      this.socket.on('logout', (username: string) => {
+        observer.next(username);
+      });
+    });
+  }
+
+  onEnableChat(payload: any): void {    
+    this.socket.emit('isChatEnabled', payload);
+  }
+}
+
+
+
+
+
+
+###### agora.service.ts #####
+
+/* agora.service.ts */
+import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
+import AgoraRTC, { IAgoraRTCClient, ILocalTrack, IRemoteVideoTrack } from 'agora-rtc-sdk-ng';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { StorageService } from '../../../core/services/storage/storage.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AgoraService {
+  private client: IAgoraRTCClient;
+  private appId!: string;
+  callDropped: boolean = false;
+  userData: any;
+  agoraPatientCallData: any;
+  agoraDoctorCallData: any;
+
+  private channelJoinedSource = new BehaviorSubject<boolean>(false);
+  channelJoined$ = this.channelJoinedSource.asObservable();
+
+  public isUserVideoMute = new Subject<any>;
+  isUserVideoMute$ = this.isUserVideoMute.asObservable();
+
+  isRemoteUserConnected: boolean = false;
+  isRemoteUserVideoMute: boolean = false;
+
+  private remoteUsers: Map<number, IRemoteVideoTrack> = new Map();
+
+  constructor(private _storage: StorageService, private router: Router) {
+    this.appId = this._storage.get('agoraAppId')
+    this.userData = this._storage.getUserData();
+    if (this.appId == '')
+      console.error('APPID REQUIRED -- Open AgoraService.ts and update appId ')
+    this.client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp9' })
+  }
+
+  async joinChannel(channelName: string, token: string | null, uid: string | null) {
+    await this.client.join(this.appId, channelName, token, this.userData.userId)
+    this.channelJoinedSource.next(true);
+  }
+
+  async leaveChannel() {
+    await this.client.leave();
+    this.isRemoteUserConnected = false;
+    this.channelJoinedSource.next(false)
+  }
+
+  redirectToVideoCall(data: any, rowData?: any) {
+    this.router.navigate(['/main/video-call'], { state: { channelName: data.channel_name, agoraToken: data.token, aptId: rowData || rowData.id } })
+  }
+
+  setupLocalTracks(): Promise<ILocalTrack[]> {
+    return AgoraRTC.createMicrophoneAndCameraTracks();
+  }
+
+  getClient() {
+    return this.client
+  }
+}

@@ -1,0 +1,591 @@
+###### Appointments ######
+
+
+
+
+
+## appointments-dashboard.component.html
+
+
+<div class="m-appointment relative">
+  @if(!isDoctor && !isAdmin){
+  <p-button label="Add Appointment" class="primary-btn m-fixed-btn" routerLink="doctors" icon="pi pi-plus"></p-button>
+  }
+  <p-tabView (onChange)="onTabChange($event)" [(activeIndex)]="activeIndex">
+    @if(isDoctor) {
+    <p-tabPanel header="Pending Requests">
+      <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+    </p-tabPanel>
+    }
+    @else if (isAdmin) {
+    <p-tabPanel header="Pending Approvals">
+      <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+    </p-tabPanel>
+    }
+    <p-tabPanel header="Upcoming Appointments">
+      <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+    </p-tabPanel>
+
+    <p-tabPanel header="Past Appointments">
+      <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+    </p-tabPanel>
+
+    @if(isAdmin){
+      <p-tabPanel header="Cancelled Appointments">
+        <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+      </p-tabPanel>
+    }
+
+    @if(isDoctor) {
+    <p-tabPanel header="Schedule" headerStyleClass="button-type">
+      <m-full-calender
+        class="m-full-calendar"
+        [events]="events"
+        [reload]="reloadCalendar"
+        (onAddSlot)="addSlot($event)"
+        (onEditSlot)="deleteSlot($event)"
+      ></m-full-calender>
+    </p-tabPanel>
+    }
+  </p-tabView>
+</div>
+
+<ng-template #tableTemplate>
+  @if (tableConfig && tableData) {
+  <m-table
+    [configs]="tableConfig"
+    [data]="tableData"
+    (columnClick)="onColumnClick($event)"
+    class="m-table-with-tabs"
+  ></m-table>
+  }
+</ng-template>
+
+
+
+
+## appointments-dashboard.component.ts
+
+
+import { AfterViewInit, Component, OnDestroy, ViewChild } from '@angular/core';
+import { Router } from '@angular/router';
+import moment from 'moment';
+import { ConfirmationService } from 'primeng/api';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { TabView } from 'primeng/tabview';
+import { HelperService } from '../../../../core/helpers/helper.service';
+import { CapitalcasePipe } from '../../../../core/pipes/capitalcase.pipe';
+import { StorageService } from '../../../../core/services/storage/storage.service';
+import { APP_MESSAGES } from '../../../../core/utils/app-messages';
+import { APP_ROLES } from '../../../../core/utils/app-roles';
+import { StorageKeys } from '../../../../core/utils/storage-keys';
+import { MInputDialog } from '../../../../shared/components/input-dialog/input-dialog.component';
+import { MToasterService } from '../../../../shared/services/toaster/toaster.service';
+import { AppointmentApiService } from '../../services/appointment-api/appointment-api.service';
+import { AppointmentsHelperService } from '../../services/appointments-helper/appointments-helper.service';
+import { MAddScheduleComponent } from '../add-schedule/add-schedule.component';
+import { MBookAppointmentComponent } from '../book-appointment/book-appointment.component';
+
+@Component({
+  selector: 'm-appointments-dashboard',
+  templateUrl: './appointments-dashboard.component.html',
+  styleUrl: './appointments-dashboard.component.scss',
+})
+export class MAppointmentsDashboardComponent implements AfterViewInit, OnDestroy {
+  value!: string;
+  products: any;
+  tableConfig: any;
+  tableData: any;
+  reloadCalendar!: boolean;
+  ref: DynamicDialogRef | undefined;
+  @ViewChild(TabView) tabView!: TabView;
+  currentTab: string = '';
+
+  events: any = [];
+  activeIndex: number = this._store.get(StorageKeys.activeScreen) || 0;
+  protected isDoctor: boolean = APP_ROLES[this._store.getRole()] === 'doctor';
+  protected isAdmin: boolean = APP_ROLES[this._store.getRole()] === 'admin';
+  protected isPatient: boolean = APP_ROLES[this._store.getRole()] === 'patient';
+
+  constructor(
+    private _dialog: DialogService,
+    private _http: AppointmentApiService,
+    private _helper: AppointmentsHelperService,
+    private _store: StorageService,
+    private _confirmation: ConfirmationService,
+    private _toaster: MToasterService,
+    private _dialogService: DialogService,
+    private _capitalCase: CapitalcasePipe,
+    private _router: Router,
+    private _commonHelper: HelperService
+  ) {}
+
+  ngAfterViewInit(): void {
+    this.onTabChange({ index: this.activeIndex });
+    this.notificationToTabChange();
+  }
+
+  //Common method for past,upcoming and request table data
+  private _getTableData(requestType: string) {
+    this.tableData = [];
+    const type =
+      requestType == 'Upcoming Appointments' ? 'future' : requestType == 'Past Appointments' ? 'past' : 'request';
+
+    this._http.getAppointmentDetails(type, this.isDoctor).subscribe({
+      next: (res: any) => {
+        //table header configs
+        const tableColumns = res.data.headerConfigs;
+
+        if (tableColumns[tableColumns.length - 1].header === 'Action') {
+          tableColumns[tableColumns.length - 1].actions.forEach((action: any) => {
+            action.icon = action.type === 'approve' ? 'pi pi-check' : action.type == 'reschedule' ? 'pi pi-history' : 'pi pi-times';
+            action.tooltip = action.type === 'approve' ? 'Approve' : action.type == 'reschedule' ? 'Reschedule' : 'Reject';
+            action.class = action.type === 'approve' ? 'm-primary-color' : action.type == 'reschedule' ? 'm-primary-color' : '';
+          });
+        }
+        this.tableConfig = tableColumns;
+
+        //table data
+        const tableData = res.data.data;
+        tableData.forEach((row: any) => {
+          row.name = this._capitalCase.transform(row.name)
+          // if(type === 'request' && this.isDoctor){
+          row.date = this._helper.unixConvertDateFormat(row.date);
+          row.start_time = this._helper.unixConvertTime(row.start_time);
+          row.end_time = this._helper.unixConvertTime(row.end_time);
+          if (row.end_time === '11:59 PM') row.end_time = '12:00 AM';
+
+          // }
+        });
+        this.tableData = tableData;
+      },
+    });
+  }
+
+  //Table data for Admin
+  private _getAdminTableData(requestType: string) {
+    this.tableData = [];
+    this.tableConfig = []
+    const type =
+      requestType == 'Upcoming Appointments' ? 'future' : requestType == 'Past Appointments' ? 'past' : requestType == 'Upcoming Appointments' ? 'upcoming' : requestType == 'Cancelled Appointments' ? 'cancelled' : 'request'
+
+    this._http.getAdminAppointmentDetails(type).subscribe({
+      next: (res: any) => {
+        //table header configs
+        const tableColumns = res.data.headerConfigs;
+
+        if (tableColumns[tableColumns.length - 1].header === 'Action') {
+          tableColumns[tableColumns.length - 1].actions.forEach((action: any) => {
+            const type = action.type;
+            action.class = type == 'view' || type == 'refund' ? 'm-primary-color' : '';
+            action.icon = type == 'view' ? 'pi pi-eye' : type == 'refund' ? 'pi pi-dollar' : '';
+            action.tooltip = type == "view" ? 'View' : type == "refund" ? 'Mark as Refund' : '';
+          });
+        }
+        this.tableConfig = tableColumns;
+
+        //table data
+        const tableData = res.data.data;
+        tableData.forEach((row: any) => {
+          row.name = this._capitalCase.transform(row.name)
+          // if(type === 'request' && this.isDoctor){
+          row.date = this._helper.unixConvertDateFormat(row.date);
+          row.start_time = this._helper.unixConvertTime(row.start_time);
+          row.end_time = this._helper.unixConvertTime(row.end_time);
+          if (row.end_time === '11:59 PM') row.end_time = '12:00 AM';
+          // }
+        });
+        this.tableData = tableData;
+      },
+    });
+  }
+
+  //Get already created slots for full calender
+  private _getSlots() {
+    this._http.getSlots().subscribe({
+      next: (res: any) => {
+        const data = res.data;
+        data.forEach((event: any) => {
+          event.date = this._helper.unixConvertDate(event.date);
+          event.start_time = this._helper.unixConvertTime(event.start_time);
+          event.end_time = this._helper.unixConvertTime(event.end_time);
+          if (event.end_time === '11:59 PM') event.end_time = '12:00 AM';
+          event.title = `${event.start_time} - ${event.end_time}`;
+          event.classNames = event.status ? ['m-slot-booked'] : [];
+        });
+        this.events = data;
+        this.reloadCalendar = true;
+      },
+      error: (err) => {
+        return err;
+      },
+    });
+  }
+
+  //on tab change
+  onTabChange(event: any) {
+    this.currentTab = this.tabView.tabs[event.index].header;
+    this._store.save(StorageKeys.activeScreen, event.index)
+    if (this.isAdmin) {
+      this._getAdminTableData(this.currentTab)
+    }
+    else if (this.currentTab != 'Schedule') {
+      this._getTableData(this.currentTab);
+    } else {
+      this._getSlots();
+    }
+  }
+
+  //Add slot popup open
+  addSlot(event: any) {
+    const headerDate = moment(event.dateStr).format('MM-DD-YYYY');
+    this.ref = this._dialog.open(MAddScheduleComponent, {
+      data: event,
+      header: `Add Schedule ${headerDate} (CDT)`,
+      width: '500px',
+      modal: true,
+      closable: true,
+    });
+    this.ref.onClose.subscribe((result: boolean) => {
+      if (result) {
+        this._getSlots();
+      }
+    });
+  }
+
+  //Delete slot Api
+  deleteSlotApi(slotId: string) {
+    this._http.deleteSlot(slotId).subscribe({
+      next: (res: any) => {
+        this._getSlots();
+        this._toaster.showSuccess(APP_MESSAGES.slotDeletedSuccessfully);
+      },
+      error: (err) => {
+        return err;
+      },
+    });
+  }
+
+  //Delete slot popup open
+  deleteSlot(event: any) {
+    const eventId = event.event._def.publicId;
+    const payload = this.events.find((ev: any) => ev.id === eventId);
+    this._confirmation.confirm({
+      target: event.target as EventTarget,
+      message: 'Are you sure you want to delete this slot?',
+      header: 'Delete Confirmation',
+      acceptIcon: 'none',
+      rejectIcon: 'none',
+
+      accept: () => {
+        this.deleteSlotApi(payload.id);
+      },
+    });
+  }
+
+  // On table column click for approve/reject appointment
+  onColumnClick(event: any) {
+    const { dataKey } = event;
+    if (dataKey.type == 'reject') this.rejectAppointmentDialog(event);
+    else if (dataKey.type == 'approve') this.appointmentRequestApi(event);
+    else if ((dataKey.type == 'link' && dataKey.dataKey == 'patient') || (dataKey.type == 'link' && this.isDoctor))
+      this.navigateToProfile(event.rowData?.user_id, 'patient/patientsDetail', event.rowData?.id);
+    else if ((dataKey.type == 'link' && dataKey.dataKey == 'doctor'))
+      this.navigateToProfile(event.rowData?.dr_id, 'doctor/doctorsDetail');
+    else if (dataKey.type == 'link' && this.isPatient)
+      this.navigateToProfile(event.rowData?.dr_id, 'appointments/doctorInfo', event.rowData?.id);
+    else if (dataKey.type === 'reschedule') this.openBookAppointmentModal(event.rowData?.dr_id, event.rowData?.id);
+    else if (dataKey.type === 'refund') this.markAsRefund(event.rowData?.id);
+  }
+
+  // Based on id navigate to profile details page
+  navigateToProfile(id: string, route: string, appointmentId?: string) {
+    
+    this._router.navigate([`main/${route}`], {
+      state: { userId: id, appointmentId: appointmentId }
+    });
+  }
+
+  markAsRefund(appointmentId: string) {
+    const payload = {
+      appointment_id: appointmentId,
+      type: 'refund',
+      status: 'Completed'
+    };
+    this._http.markAsRefund(payload).subscribe({
+      next: () => {
+        this._toaster.showSuccess(APP_MESSAGES.successMessage.refundSuccess);
+        this.onTabChange({ index: this.activeIndex });
+      }
+    });
+  }
+
+  openBookAppointmentModal(doctorId: string, appointmentId: string) {
+    this.ref = this._dialog.open(MBookAppointmentComponent, {
+      data: { id: doctorId, slotType: 'reschedule', appointment_id: appointmentId },
+      header: 'Reschedule Appointment',
+      width: '500px',
+      styleClass: 'm-book-appointment-dialog',
+      modal: true,
+      closable: true
+    });
+
+    this.ref.onClose.subscribe(() => {
+      this.onTabChange({ index: this.activeIndex });
+    });
+  }
+
+  // Open dialog on appointment rejection
+  rejectAppointmentDialog(event: any) {
+    this.ref = this._dialogService.open(MInputDialog, {
+      header: 'Please provide a reason',
+      contentStyle: { overflow: 'auto' },
+      width: '30%',
+      data: { isCheckBox: true }
+    });
+    this.ref.onClose.subscribe((result) => {
+      if (result) this.appointmentRequestApi(event, result);
+    });
+  }
+
+  // Approve/reject appointment api
+  appointmentRequestApi(event: any, result?: any) {
+    const requestType = event.dataKey.type;
+    const payload: any = {
+      slot_id: event.rowData.slot_id,
+      appointment_id: event.rowData.id,
+      type: requestType == 'reject' ? 2 : 1,
+      notes: result?.note || '',
+      slot_available: result?.slot_available || false
+    }
+
+    this._http.approveAppointment(payload).subscribe({
+      next: (res: any) => {
+        this._toaster.showSuccess(requestType === 'approve' ?
+          'Appointment request accepted successfully.' :
+          'Appointment request rejected successfully.');
+        this._getTableData('request');
+      }
+    });
+  }
+
+  notificationToTabChange() {
+    this._commonHelper.redirectNotification$.subscribe((res) => {
+      this.activeIndex = res;
+      this.onTabChange({ index: res});
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._store.remove(StorageKeys.activeScreen);
+  }
+}
+
+
+
+
+
+### add-schedule.component.ts
+
+import { Component, OnInit } from '@angular/core';
+import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
+import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { AppointmentApiService } from '../../services/appointment-api/appointment-api.service';
+import { slotForm } from '../../utils/appointment.fields';
+import { AppointmentsHelperService } from '../../services/appointments-helper/appointments-helper.service';
+import { generateNextOptions } from '../../helpers/get-dropdown-options';
+import { MToasterService } from '../../../../shared/services/toaster/toaster.service';
+import { APP_MESSAGES } from '../../../../core/utils/app-messages';
+import moment from 'moment';
+
+@Component({
+  selector: 'm-add-schedule',
+  templateUrl: './add-schedule.component.html',
+  styleUrl: './add-schedule.component.scss',
+})
+export class MAddScheduleComponent implements OnInit {
+  reOccurringCheckbox: boolean = false;
+  isAddSchedule: boolean = true;
+  eventDate: any;
+
+  form!: FormGroup;
+  configs = slotForm;
+  StartTimeOptions: string[] = slotForm.startTime.options;
+  endTimeOptions: any[] = [];
+  isWeekEnd: boolean;
+
+  constructor(
+    private _dialogRef: DynamicDialogRef,
+    public dialogData: DynamicDialogConfig,
+    private _http: AppointmentApiService,
+    private _formBuilder: FormBuilder,
+    private _helper: AppointmentsHelperService,
+    private _toaster: MToasterService
+  ) {
+    const day = moment(this.dialogData.data.date).format('dddd');
+    this.isWeekEnd = ["Saturday", "Sunday"].includes(day);
+  }
+
+  ngOnInit(): void {
+    this._initialize();
+  }
+
+  private _initialize() {
+    const dialogData = this.dialogData.data;
+    this.eventDate = dialogData.dateStr;
+    this._buildForm();
+    this.endTimeOptions[0] = [...generateNextOptions(this.StartTimeOptions[0], '15')];
+  }
+
+
+  //Add schedule form builder
+  private _buildForm() {
+    this.form = this._formBuilder.group({
+      slot_difference: new FormControl(15),
+      recurring: new FormControl(false),
+      recurring_type: new FormControl(''),
+      excludeWeekends: new FormControl(false),
+      slots: this._formBuilder.array([]),
+    });
+    this.addDynamicFields(true);
+  }
+
+  //Add Controls
+  private _addControls(initialization: boolean = false) {
+    return this._formBuilder.group({
+      start_time: new FormControl(initialization ? '12:00 AM' : '', Validators.required),
+      end_time: new FormControl('', Validators.required),
+    });
+  }
+
+  //Get dynamic form array
+  dynamicArrayForm(): FormArray {
+    return this.form.get('slots') as FormArray;
+  }
+
+  //Add Dynamic controls in form array
+  addDynamicFields(initialization: boolean = false) {
+    this.dynamicArrayForm().push(this._addControls(initialization));
+  }
+
+  // Remove dynamic control on click
+  removeDynamicField(index: number) {
+    this.dynamicArrayForm().removeAt(index);
+    this.endTimeOptions.splice(index, 1);
+  }
+
+  //On behalf of reOccurring checkbox control add remove
+  reOccurringChange(event: any) {
+    this.reOccurringCheckbox = event.checked;
+
+    const control = this.form.controls['recurring_type'];
+    if (event.checked) control.setValidators([Validators.required]);
+    else {
+      this.form.controls['excludeWeekends'].setValue(false);
+      this.form.controls['recurring_type'].setValue('');
+      control.clearValidators();
+    }
+    control.updateValueAndValidity();
+  }
+
+  // Add slot api
+  addSlot() {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+
+    const data = JSON.parse(JSON.stringify(this.form.value));
+    data.slots.forEach((event: any) => {
+      if(event.end_time === '12:00 AM') event.end_time = '11:59 PM';
+      event.start_time = this._helper.timeConvertUnix(event.start_time, this.eventDate);
+      event.end_time = this._helper.timeConvertUnix(event.end_time, this.eventDate);
+    });
+
+    this._http.saveSlot({
+      ...data,
+      date: this._helper.dateConvertUnix(this.dialogData.data.dateStr),
+      full_day: true,
+    }).subscribe({
+      next: (res: any) => {
+        this._toaster.showSuccess(APP_MESSAGES.slotCreatedSuccessfully);
+        this.dialogClose(true);
+      },
+      error: (err) => {
+        return err;
+      },
+    });
+  }
+}
+
+
+
+## add-schedule.component.html
+
+<form class="form" [formGroup]="form" >
+    <div>
+      <div>
+        <m-input-radio [group]="form" selectedValueKey="value" [config]="configs.radioButton" (change)="onRadioChange($event)"></m-input-radio>
+      </div>
+      <div formArrayName="slots">
+        <p class="formMainSubCaption mb-1">Slots</p>
+        @for(fields of dynamicArrayForm().controls; track fields; let index = $index) {
+          <div [formGroupName]="index">
+          <div class="flex gap-3 align-items-center mb-4">
+            <div class="relative flex-auto">
+              <p-dropdown appendTo="body" styleClass="w-full" formControlName="start_time" (onChange)="onDropdownChange($event,index)"
+                [options]="StartTimeOptions" placeholder="Start Time"></p-dropdown>
+                <small class="absolute top-100 left-0 p-error text-xs mt-1" *ngIf="form.get('slots')?.get(index.toString())?.get('start_time')?.invalid && form.get('slots')?.get(index.toString())?.get('start_time')?.touched">
+                  Please select start time.
+                </small>
+            </div>
+            <div class="relative flex-auto">
+              <p-dropdown appendTo="body" styleClass="w-full" formControlName="end_time" [options]="endTimeOptions[index]"
+                placeholder="End Time"></p-dropdown>
+                <small class="absolute top-100 left-0 p-error text-xs mt-1" *ngIf="form.get('slots')?.get(index.toString())?.get('end_time')?.invalid && form.get('slots')?.get(index.toString())?.get('end_time')?.touched">
+                  Please select end time.
+                </small>
+            </div>
+            <div class="relative">
+              @if (!index) {
+              <div class="primary-btn">
+                <button (click)="addDynamicFields()" pButton pRipple type="button" icon="pi pi-plus"
+                  class="right-btn iconButton px-0"></button>
+              </div>
+              }
+              @if(index) {
+              <div class="delete-btn">
+                <button pButton pRipple type="button" (click)="removeDynamicField(index)" icon="pi pi-minus"
+                  class="right-btn iconButton  px-0"></button>
+              </div>
+              }
+            </div>
+          </div>
+        
+        </div>
+        }
+
+      </div>
+      <div class="pt-1">
+        <p-checkbox formControlName="recurring" binary="true" label="Reoccur Daily" class="m-custom-checkbox"
+          (onChange)="reOccurringChange($event);"></p-checkbox>
+      </div>
+      @if(reOccurringCheckbox){
+      <div class="pt-3 mb-4 relative">
+        <p-dropdown appendTo="body" styleClass="w-full" [formControlName]="configs.recurring.key" [options]="configs.recurring.options"
+        [placeholder]="configs.recurring.placeholder" optionLabel="name" optionValue="value"></p-dropdown>
+        <small class="absolute top-100 left-0 p-error text-xs mt-1" *ngIf="form.get('recurring_type')?.errors?.['required'] && form.get('recurring_type')?.touched">
+          Please choose Reoccur type.
+        </small>
+        @if (form.controls['recurring_type'].value && !isWeekEnd) {
+          <p-checkbox formControlName="excludeWeekends" binary="true" label="Exclude Weekends" class="m-custom-checkbox mt-3"></p-checkbox>
+        }
+      </div>
+      }
+    </div>
+    <p-button label="Add" class="primary-btn block mt-3" styleClass="w-full" (click)="addSlot()"></p-button>
+  </form>

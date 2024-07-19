@@ -1,0 +1,72 @@
+###### Pain points feature ######
+
+## pain-points.component.html ##
+
+
+<div class="m-right-inner-wrapper">
+    <h4>Click the body area in pain.</h4>
+    <div class="flex gap-5">
+        <div class="m-body-area  mt-3">
+            <img [src]="'assets/images/2hiimg11_front.jpg'">
+            @for(painArea of bodyPainAreas; track painArea.class; let idx = $index) {
+                @if(painArea.class.includes('front')) {
+                    <ng-container [ngTemplateOutlet]="painPointSpan" [ngTemplateOutletContext]="{painArea:painArea}"></ng-container>
+                }
+            }
+        </div>
+        <div class="m-body-area  mt-3">
+            <img [src]="'assets/images/2hiimg11_back.jpg'">
+            @for(painArea of bodyPainAreas; track painArea.class; let idx = $index) {
+                @if(painArea.class.includes('back')) {
+                    <ng-container [ngTemplateOutlet]="painPointSpan" [ngTemplateOutletContext]="{painArea:painArea}"></ng-container>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<ng-template #painPointSpan let-painArea="painArea">
+    <span class="m-pain-area-point m-back m-front" pTooltip="{{painArea.tooltip}}" tooltipPosition="top"
+    placeholder="Top" (click)="highlightBodyPart(painArea)" [class.m-active]="painArea.isActive"
+    [class.m-hide]="painArea.isHide"  [ngClass]="painArea.class"
+    [ngStyle]="{'left': painArea.left,top: painArea.top }"></span>
+</ng-template>
+
+
+
+
+
+
+
+## pain-points.component.ts
+
+
+import { Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
+
+@Component({
+  selector: 'm-pain-points',
+  templateUrl: './pain-points.component.html',
+  styleUrl: './pain-points.component.scss'
+})
+export class MPainPointsComponent implements OnDestroy {
+  @Output() selectedParts = new EventEmitter<string>();
+  selectedBodyParts: any = [];
+
+  constructor() { }
+
+  ngOnInit(): void {
+  }
+
+  highlightBodyPart(item: any): void {       // To highlight/ remove highlight on selection/deselection of points.
+    item.isActive = !item.isActive;
+    if (item.isActive) {
+      this.selectedBodyParts.push(item);
+    } else {
+      let index = this.selectedBodyParts.findIndex((bodypart: any) => item.class == bodypart.class);
+      this.selectedBodyParts.splice(index, 1)
+    }
+    this.selectedParts.emit(this.selectedBodyParts);
+  }
+
+  ngOnDestroy(): void {
+  }

@@ -1,0 +1,83 @@
+##### Full calendar #####
+
+
+
+
+## full-calendar.component.ts
+
+
+import { formatDate } from '@angular/common';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ViewChild
+} from '@angular/core';
+import { FullCalendarComponent } from '@fullcalendar/angular';
+import { CalendarOptions, EventInput } from '@fullcalendar/core';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import listPlugin from '@fullcalendar/list';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import moment from 'moment';
+
+@Component({
+  selector: 'm-full-calender',
+  // changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './full-calendar.component.html',
+  styleUrl: './full-calendar.component.scss',
+})
+export class MFullCalenderComponent {
+  @ViewChild('calendar') calendar!: FullCalendarComponent;
+  @Input() reload: boolean = false;
+  @Input() events: EventInput[] = [];
+
+  @Output() onAddSlot = new EventEmitter();
+  @Output() onEditSlot = new EventEmitter();
+
+  calendarOptions: CalendarOptions = {
+    plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+    initialView: 'dayGridMonth',
+    selectable: true,
+    height: 'auto',
+    
+    dateClick: (selectInfo: any) => this.onAddSlot.emit(selectInfo),
+    eventClick: (info: any) => {
+      if (info.event._def.extendedProps.status)
+        return;
+      
+      this.onEditSlot.emit(info);
+    },
+    eventOrder: (a: any, b: any) => moment(a.start_time, "h:mm a").unix() - moment(b.start_time, "h:mm a").unix(),
+    headerToolbar: {
+      start: 'prev,next today',
+      center: 'title',
+      end: '',
+    },
+    buttonText: {
+      today: 'Today',
+    },
+    nowIndicator: true,
+    validRange: {
+      start: formatDate(new Date(), 'yyyy-MM-dd', 'en-US'),
+    },
+    
+    // businessHours: {
+    //   daysOfWeek: [1, 2, 3, 4, 5], // Monday - Friday
+    //   startTime: '09:00:00',
+    //   endTime: '20:30:00',
+    // },
+  };
+}
+
+
+## full-calendar.component.html
+
+@if(reload) {
+<full-calendar
+  #calendar
+  [events]="events"
+  [options]="calendarOptions"
+></full-calendar>
+}
