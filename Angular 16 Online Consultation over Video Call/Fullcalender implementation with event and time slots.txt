@@ -1,0 +1,701 @@
+/**************************************************** CalanderComponent.html ****************************************************************/
+
+<div class="subHeader">
+    <div class="subTitle">Schedule Timings</div>
+  </div>
+  <div class="card">
+    <div class="cardBody">
+      <div class="calendar timeSlotCalender">
+        <div class="controlSection">
+          <div class="row justify-center">
+            <div class="col-xs-12">
+              <mat-card class="fullCalender" *ngIf="showCalendar">
+                <full-calendar [options]="calendarOptions" ></full-calendar>
+              </mat-card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  /**************************************************** CalanderComponent.ts ****************************************************************/
+
+  import { ChangeDetectorRef, Component, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
+  import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+  // import { NgbModalConfig, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+  // import { DatePipe } from '@angular/common';
+  import dayGridPlugin from '@fullcalendar/daygrid';
+  import interactionPlugin from '@fullcalendar/interaction';
+  import { TimeslotDialogComponent } from './timeslot-dialog/timeslot-dialog.component';
+  import { SharedService } from 'src/app/core/services/common-service/shared/shared.service';
+  import { DatePipe } from '@angular/common';
+  import { ToastrService } from 'ngx-toastr';
+  import { TimeSlotService } from 'src/app/core/services/doctors/time-slot.service';
+  import { Subscription } from 'rxjs';
+  import { CalendarOptions } from '@fullcalendar/core';
+  @Component({
+    selector: 'app-time-slot',
+    templateUrl: './time-slot.component.html',
+    styleUrls: ['./time-slot.component.scss']
+  })
+  export class TimeSlotComponent implements OnInit, OnDestroy {
+    today = new Date();
+    private _subscriptions: Subscription = new Subscription();
+    calendarOptions: CalendarOptions = {
+      plugins: [interactionPlugin, dayGridPlugin],
+      initialView: 'dayGridMonth',
+      dateClick: this.handleDateClick.bind(this), // bind is important!
+      eventClick: this.handleEventClick.bind(this),
+      eventOrderStrict: true,
+      eventOrder: "-tittle",
+      events: [],
+      selectable: true
+    };
+  
+    dates: any;
+    currentDate = new Date()
+    data = {
+      sh: Boolean
+    }
+    eventId!: string;
+    sh: any
+    events: any = [];
+    showCalendar = true;
+    // startTime= new Date();
+    startTime: Date = new Date();
+    @ViewChild('eventDialog', { static: false }) eventDialog!: TemplateRef<any>;
+    @ViewChild('content', { static: false }) content: TemplateRef<any> | undefined;
+    @ViewChild('detail', { static: false }) detail!: TemplateRef<any>;
+  
+    constructor(
+      public dialog: MatDialog,
+      private shared: SharedService,
+      public datepipe: DatePipe,
+      private toast: ToastrService,
+      private timeSlot: TimeSlotService,) {
+  
+    }
+  
+    ngOnInit(): void {
+      this._subscriptions.add(this.shared.closeDialog$.subscribe(() => {
+        this.getEventdata()
+      }));
+      this.getEventdata()
+    }
+  
+    // get saved slots from backend 
+    getEventdata() {
+      this.dates = [];
+      this._subscriptions.add(this.timeSlot.getSavedSlotDetail().subscribe({
+        next: (res) => {
+          if (res) {
+            this.dates = res.data.appointmentSlots;
+            this.setDates();
+          }
+        }
+      }));
+    }
+  
+    convertTimeStamp(value: any) {
+      return this.datepipe.transform(value, 'yyyy-MM-dd')
+    }
+  
+  
+    // select date range
+    setDates() {
+      this.events = [];
+      this.dates.forEach((res: any) => {
+        const startTime = res.start_time;
+        const endTime = res.end_time;
+        this.events.push({
+          title: `${startTime} - ${endTime}`,
+          start: this.convertTimeStamp(`${res.date} ${res.start_time}`),
+          end: this.convertTimeStamp(`${res.date} ${res.end_time}`),
+          id: res.id,
+  
+        });
+      });
+      this.calendarOptions = {
+        events: [...this.events]
+      };
+    }
+  
+  
+    // open create event modal
+    handleDateClick(arg: any) {
+      let today = (new Date()).toISOString().split('T')[0]
+      if (arg.dateStr < today) {
+        return
+      }
+      this.dialog.open(TimeslotDialogComponent, {
+        width: '650px',
+        data: { selectedDate: arg.dateStr },
+        disableClose: true
+      })
+    }
+  
+    // create slot
+    handleEventClick(arg: any) {
+      this.eventId = arg.event._def.publicId
+      let dateObject: any = {};
+      let bindDates = this.dates.filter((item: any) => item.id == this.eventId);
+      bindDates.map((items: any) => {
+        let slotArray = []
+        let slot = {
+          startTime: items.start_time,
+          endTime: items.end_time,
+          selectedId: items.id
+        }
+        slotArray.push(slot)
+        dateObject[items.date] = {
+          slots: slotArray
+        }
+        return items
+      })
+      this.dialog.open(TimeslotDialogComponent, {
+        width: '650px',
+        data: { AddedSlot: dateObject },
+        disableClose: true
+      })
+    }
+  
+  
+    ngOnDestroy() {
+      this.showCalendar = false;
+      this._subscriptions.unsubscribe();
+    }
+  }
+
+
+  /************************************************************ Dialog.ts for add/update/remove events from calendar ****************************************************/
+  
+  import { Component, Inject, OnDestroy, OnInit, TemplateRef, ViewChild, ViewEncapsulation } from '@angular/core';
+  import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+  import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+  import { ValidationService } from 'src/app/authentication/services/validation.service';
+  import { SharedService } from 'src/app/core/services/common-service/shared/shared.service';
+  import { TimeSlotService } from 'src/app/core/services/doctors/time-slot.service';
+  import { CommonDialogComponent } from 'src/app/shared/components/common-dialog/common-dialog.component';
+  import { ToastrService } from 'ngx-toastr';
+  import { MatCheckboxChange } from '@angular/material/checkbox';
+  import { Subscription } from 'rxjs';
+  
+  @Component({
+    selector: 'app-timeslot-dialog',
+    templateUrl: './timeslot-dialog.component.html',
+    styleUrls: ['./timeslot-dialog.component.scss'],
+    encapsulation: ViewEncapsulation.None
+  })
+  export class TimeslotDialogComponent implements OnInit, OnDestroy{
+    eventForm: FormGroup;
+    startDate: any = new Date();
+    endDate: any;
+    submitted!: boolean;
+    eventDate!: Date;
+    eventId!: string;
+    currentDate = new Date();
+    today = new Date();
+    eventExsist: boolean = false;
+    @ViewChild('timepicker', { static: false }) timepicker: TemplateRef<any> | undefined;
+    minTime!: any;
+    disableMinTime: boolean = false;
+    compareTime: boolean = false;
+    slotNotSelected: boolean = false;
+    selctedSlotNotCorrect: boolean = false;
+    startDateDropDown: any[] = [];
+    endDateDropDown: any[] = [];
+    timeArray: any = [];
+    timeArray2: any = [];
+    dateArr: any = [];
+    period: string = ''
+    isFullDayAvailble = false;
+    private _subscriptions: Subscription = new Subscription();
+  
+    constructor(
+      @Inject(MAT_DIALOG_DATA) public data: any,
+      public dialogRef: MatDialogRef<TimeslotDialogComponent>, public dialog: MatDialog, private formBuilder: FormBuilder, private validationService: ValidationService, private timeSlot: TimeSlotService, private shared: SharedService, private toast: ToastrService) {
+      this.eventForm = this.formBuilder.group({
+        bookingDate: [data.selectedDate],
+      });
+      if (data.AddedSlot) {
+        this.eventExsist = true;
+        let datas = data.AddedSlot
+        for (let key in datas) {
+          this.eventForm.patchValue({
+            bookingDate: datas[key],
+          })
+          let slots = datas[key].slots
+          this.dateArr = [{ date: key, slots }]
+          this.eventId = slots[0].selectedId;
+        }
+      } else {
+      }
+      this.setMinTime();
+    }
+  
+    ngOnInit(): void {
+      if (this.dateArr.length == 0) {
+        this.endDateChange();
+      }
+  
+      this.timeArray = this.generateTimeArray('00:00', '23:45', 15);
+    }
+  
+    // generate time array for slots
+    generateTimeArray(startTime: string, endTime: string, intervalMinutes: number) {
+      const result = [];
+      let currentTime = new Date(`2000-01-01T${startTime}`);
+      const endTimeObj = new Date(`2000-01-01T${endTime}`);
+      while (currentTime <= endTimeObj) {
+        let time = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        result.push({ id: time, name: time });
+        currentTime.setMinutes(currentTime.getMinutes() + intervalMinutes);
+      }
+      return result;
+    }
+  
+    // number validation for input
+    numberOnly(event: any) {
+      const charCode = event.which ? event.which : event.keyCode;
+      if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+        return false;
+      }
+      return true;
+    }
+  
+    // set min time limit for slot
+    setMinTime() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+  
+    getErrorValidator(value: any, label: string) {
+      return this.validationService.getErrorValidationMessages(value, this.eventForm, label);
+    }
+  
+    get ep() { return this.eventForm.controls }
+  
+    getIso(p: any, minus: any = false) {
+      let ndate = new Date(p);
+      if (minus) {
+        ndate.setDate(ndate.getDate() + 1);
+      } else {
+        ndate.setDate(ndate.getDate() - 0);
+      }
+      let value = ndate.toISOString();
+      return value;
+    }
+  
+    // intilize add event 
+    startDateChange(item: { value: any; }) {
+      this.dateArr = [];
+    }
+  
+    // on select of end date form daterange
+    endDateChange() {
+      this.dateArr = []
+      this.startDate = this.eventForm.value.bookingDate;
+      this.endDate = this.eventForm.value.bookingDate;
+      this.dateArr = this.getDateArray(this.startDate, this.endDate);
+      this.dateArr = this.dateArr.map((itm: any, index: number) => {
+        let selectedDate = new Date(itm);
+        selectedDate.setDate(selectedDate.getDate());
+        let increasedDate = selectedDate.toISOString().split('T')[0];
+        let today = (new Date()).toISOString().split('T')[0];
+        if (increasedDate > today) {
+          this.minTime = null
+        } else {
+          this.minTime = this.setMinTime()
+        }
+        let error: boolean = false
+        return { date: itm, slots: [{ startTime: '', endTime: '', error, compareTime: false, minTime:false }] }
+      })
+    }
+  
+  
+  // get date array from slected date range
+    getDateArray(strDate: any, endDate: any) {
+      let dArray: any = [];
+      let sDate = new Date(strDate);
+      let eDate: any = new Date(endDate);
+      eDate = eDate ? eDate : sDate;
+      let total = this.getDays(strDate, endDate)
+      if (sDate.getDate() == eDate.getDate()) {
+        dArray.push(this.getIso(sDate));
+      } else {
+        for (let i = 0; i <= total; i++) {
+          dArray.push(this.getIso(sDate));
+          if (strDate == endDate) {
+            sDate.setDate(sDate.getDate());
+          } else {
+            sDate.setDate(sDate.getDate() + 1);
+          }
+        }
+      }
+      return dArray;
+    }
+  
+    getDays: any = (strDate: any = this.currentDate, endDate: any = this.currentDate) => {
+      var date1 = new Date(strDate);
+      var date2 = new Date(endDate);
+      let value = 0
+      var diff = Math.abs(date2.getTime() - date1.getTime());
+      var noofdays = Math.ceil(diff / (1000 * 3600 * 24));
+      if (date1 > date2) {
+      }
+      else {
+        value = noofdays;
+      }
+      value = value == 0 ? 1 : value;
+      return value
+    }
+  
+    addQuantity(i: string | number) {
+      let error: boolean = false;
+      if (this.isFullDayAvailble && this.dateArr[0].slots.length == 1) {
+        this.dateArr[i].slots.push({ startTime: '', endTime: '', error, compareTime: false });
+      }
+  
+      if (!this.isFullDayAvailble) {
+        this.dateArr[i].slots.push({ startTime: '', endTime: '', error, compareTime: false });
+  
+      }
+    }
+  
+    removePackage(i: string | number, ic: any) {
+      let ext = this.dateArr[i].slots.filter((itm: any, dc: any) => dc != ic)
+      this.dateArr[i].slots = ext
+    }
+  
+    //remove event from specific date
+    delete_event(id: any) {
+      this.dialog.open(CommonDialogComponent, {
+        data: { dialogTitle: 'Delete Slot', dialogText: 'Are you sure you want to Delete the Slot?' },
+        width: '600px',
+        disableClose: true
+      }).afterClosed().subscribe(data => {
+        if (data?.event == true) {
+          this._subscriptions.add(this.timeSlot.DeleteSlot(id).subscribe({
+            next: (res) => {
+              if (res) {
+                this.toast.success(res.message);
+                this.dialogRef.close({
+                  clicked: 'submit',
+                });
+                this.shared.closeDialog();
+              }
+            }
+          })); 
+        }
+      })
+    }
+  
+    compareTimes(timeObject: any) {
+      let currentDate = new Date().toISOString().slice(0, 10);
+      const endDate = new Date('2000-01-01 ' + timeObject.endTime);
+      const startDate = new Date('2000-01-01 ' + timeObject.startTime);
+  
+      if (this.data.selectedDate == currentDate) {
+        let now = new Date();
+        let formatedTime = now.toLocaleTimeString('en-US', {
+         
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        let currentFormatDate = new Date('2000-01-01 ' + formatedTime);
+  
+          if(startDate < currentFormatDate){
+            timeObject.minTime = true;
+          }else{
+            timeObject.minTime = false;
+          }
+      }
+      if (timeObject.endTime != '') {
+       
+        timeObject.compareTime = endDate <= startDate;
+      }
+      let isValid = true
+      this.dateArr.forEach((item: any) => {
+        item.slots.forEach((element: any) => {
+          if (element.startTime == '' || element.endTime == undefined || element.endTime == '') {
+            element.error = true;
+            isValid = false
+          }else{
+            element.error = false;
+          }
+          if (element.compareTime) {
+            isValid = false;
+            return;
+          }
+        });
+      });
+  
+    }
+  
+    onSubmit() {
+      if (this.eventForm.invalid) {
+        this.eventForm.markAllAsTouched();
+        return
+      }
+      let isValid = true
+      this.dateArr.forEach((item: any) => {
+        item.slots.forEach((element: any) => {
+          if (element.startTime == '' || element.endTime == undefined || element.endTime == '') {
+            element.error = true;
+            isValid = false
+          }
+  
+          if (element.compareTime) {
+            isValid = false;
+            return;
+          }
+        });
+  
+      });
+  
+      if (this.isFullDayAvailble && this.period.length == 0) {
+        this.slotNotSelected = true;
+        return;
+      } else {
+        if (this.selctedSlotNotCorrect) {
+          return;
+        }
+        this.dateArr.map((item: any) => {
+          item['slot_difference'] = parseInt(this.period);
+          return item;
+        });
+      }
+      if (isValid) {
+        this._subscriptions.add(this.timeSlot.SaveAvailibilty(this.dateArr[0]).subscribe({
+          next: (res) => {
+            this.dialogRef.close({
+              clicked: 'submit',
+            });
+            this.dateArr.map((item: any) => {
+              delete item.slot_difference;
+            })
+            this.shared.closeDialog();
+  
+          }, error: (err) => {
+          }
+        })); 
+  
+      }
+    }
+  
+    UpdateEvent(id: string) {
+      if (this.isFullDayAvailble && this.period == '') {
+        this.slotNotSelected = true;
+        return;
+      } else {
+        if (this.selctedSlotNotCorrect) {
+          return;
+        }
+        this.dateArr.map((item: any) => {
+          item['slot_difference'] = parseInt(this.period);
+          return item;
+        });
+      }
+      this._subscriptions.add(this.timeSlot.UpdateSlot(this.dateArr[0], id).subscribe({
+        next: (res) => {
+          if (res) {
+            this.toast.success(res.message);
+            this.dialogRef.close({
+              clicked: 'submit',
+            });
+            this.shared.closeDialog();
+          }
+        }, error: (err) => {
+        }
+      }));
+    }
+  
+    closeDialog() {
+      this.dialogRef.close({
+        clicked: 'close',
+      });
+      this.dateArr = [];
+  
+    }
+  
+  
+    toggleSelection(checkbox: MatCheckboxChange) {
+      this.slotNotSelected = false;
+      this.selctedSlotNotCorrect = false;
+      this.period = '';
+    }
+  
+    addSlotDuration(e: any) {
+      console.log('e:', e.value);
+      this.slotNotSelected = false;
+      this.dateArr[0].slots.forEach((items: any) => {
+        const startTime: any = new Date(`2000-01-01 ${items.startTime}`);
+        const endTime: any = new Date(`2000-01-01 ${items.endTime}`);
+        const durationInMinutes: any = (endTime - startTime) / (1000 * 60); // Convert milliseconds to minutes
+        if (parseInt(this.period) > durationInMinutes) {
+          this.selctedSlotNotCorrect = true;
+        } else {
+          this.selctedSlotNotCorrect = false;
+        }
+      });
+  
+  
+    }
+  
+    generateTimePicker() {
+      var times = [];
+      var startTime = 0;
+      var endTime = 24 * 60;
+      for (var i = startTime; i < endTime; i += 15) {
+        var hours = Math.floor(i / 60);
+        var minutes = i % 60;
+        var formattedTime = `${(hours < 10 ? '0' : '') + hours}:${(minutes < 10 ? '0' : '') + minutes}`;
+        times.push(formattedTime);
+      }
+      return times;
+    }
+  
+    ngOnDestroy() {
+      this._subscriptions.unsubscribe();
+    }
+  }
+
+
+  /***************************************************************Dialog.html ***************************************************************************************/
+
+  <div class="addTimeSlot">
+  <mat-dialog-content>
+    <div>
+      <div class="modalHeader flex align-center space-between">
+        <h3 class="modalTitle mb-0" *ngIf="!eventExsist" id="modalBasicTitle">
+          Add Schedule
+        </h3>
+        <h3 class="modalTitle mb-0" *ngIf="eventExsist" id="modalBasicTitle">
+          Edit Schedule
+        </h3>
+        <button type="button" aria-label="Close" (click)="closeDialog()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="borderBottom"></div>
+      <form [formGroup]="eventForm">
+        <div class="modalBody">
+          <div class="row">
+            <div class="col-xs-12 col-md-12">
+              <div class="flex align-center timeCheckbox" *ngIf="!eventExsist">
+                <mat-checkbox class="example-margin" [(ngModel)]="isFullDayAvailble"
+                  [ngModelOptions]="{ standalone: true }" (change)="toggleSelection($event)">
+                </mat-checkbox>
+                <p class="mb-0">Available for full day.</p>
+              </div>
+              <div class="calenderTimeRow pb-0" >
+                <div class="row" *ngFor="let item of dateArr; let i = index">
+                  <div class="col-sm-4 col-md-3">
+                    <div class="calenderAdd">
+                      <label for="">Date</label>
+                      <div class="calenderDate">{{ item.date | date }}</div>
+                    </div>
+                  </div>
+                  <div class="col-sm-8 col-md-9">
+                    <div class="row" *ngFor="let itm of item.slots; let ic = index">
+                      <div class="col-sm-4 col-md-4 mb-3">
+                        <div class="calenderAdd">
+                          <mat-form-field>
+                            <mat-label>Start time</mat-label>
+                            <mat-select [(ngModel)]="itm.startTime" [ngModelOptions]="{ standalone: true }"
+                              (selectionChange)="compareTimes(itm)">
+                              <mat-option *ngFor="let data of timeArray" [value]="data.id">{{ data.name }}</mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                        </div>
+                      </div>
+                      <div class="col-sm-4 col-md-4 mb-3">
+                        <div class="calenderAdd">
+                          <mat-form-field>
+                            <mat-label>End Time</mat-label>
+                            <mat-select [(ngModel)]="itm.endTime" [ngModelOptions]="{ standalone: true }"
+                              (selectionChange)="compareTimes(itm)">
+                              <mat-option *ngFor="let data of timeArray" [value]="data.id">{{ data.name }}</mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                        </div>
+                      </div>
+
+                      <div class="col-sm-2 col-md-2 mb-3" *ngIf="!eventExsist &&  ic == 0">
+                        <div class="calenderAdd">
+                          <button type="button" (click)="addQuantity(i)" title="Add" class="btn btn-primary mt-4">
+                            <i class="fa fa-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="col-sm-2 col-md-2 mb-3">
+                        <div class="calenderAdd">
+                          <button class="themBlue" *ngIf="ic > 0" title="Remove" type="button"
+                            (click)="removePackage(i, ic)">
+                            <i class="fa fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="col-sm-8">
+                        <div *ngIf="itm.error == true" class="fieldsRequired text-align-center">
+                          Both Fields are required.
+                        </div>
+                      </div>
+
+                      <div class="col-sm-8">
+                        <div *ngIf="itm.minTime == true" class="fieldsRequired text-align-center">
+                          please select the available time from today.
+                        </div>
+                      </div>
+                      <div class="col-sm-8">
+                        <div *ngIf="itm.compareTime" class="fieldsRequired text-align-center">
+                          End time should be greater then start time.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="isFullDayAvailble" class="timeSlot">
+                <label class="example-margin timeSlotLabel">Slot duration <small><i>(For each session)</i></small></label>
+                <mat-radio-group [(ngModel)]="period" [ngModelOptions]="{ standalone: true }"
+                  (change)="addSlotDuration($event)" class="slotRadioGroup">
+                  <mat-radio-button class="example-margin" value=15>15 Min</mat-radio-button>
+                  <mat-radio-button class="example-margin" value=30>30 Min</mat-radio-button>
+                  <mat-radio-button class="example-margin" value=45>45 Min</mat-radio-button>
+                  <mat-radio-button class="example-margin" value=60>60 Min</mat-radio-button>
+                </mat-radio-group>
+              </div>
+
+              <div *ngIf="slotNotSelected" class="fieldsRequired text-align-center">
+                Please select one slot.
+              </div>
+
+              <div *ngIf="selctedSlotNotCorrect" class="fieldsRequired text-align-center">
+                Please select correct duration slot.
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="modalFooter">
+          <div class="text-align-right">
+            <button *ngIf="!eventExsist" class="themeBtn" (click)="onSubmit()" type="submit">
+              Submit
+            </button>
+            <button *ngIf="eventExsist" class="themeDanger" (click)="delete_event(eventId)">
+              Delete
+            </button>
+            <button *ngIf="eventExsist" class="themeBtn" (click)="UpdateEvent(eventId)" type="submit">
+              Update
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </mat-dialog-content>
+</div>

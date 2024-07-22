@@ -1,0 +1,716 @@
+/**************************************************************** Chat Service.ts ****************************************************************************/
+
+import { Injectable } from '@angular/core';
+import {
+  connect,
+  LocalAudioTrackPublication,
+  createLocalTracks,
+  LocalVideoTrackPublication
+} from 'twilio-video';
+import { BaseService } from '../base-service';
+import { AuthService } from 'src/app/authentication/services/auth.service';
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ChatService {
+  constructor( private http: BaseService, private auth:AuthService) {
+  }
+
+
+  public time: string = '00:00:00';
+  public isRunning: boolean = false;
+  public callStart: boolean = false
+  public completeCall: boolean = false
+  public loader: boolean = true
+  public interval: any;
+  public startTime: number = 0;
+  public lastElapsedTime: number = 0;
+  public twillioToken = '';
+  public twillioRoom = '';
+  public track: any;
+  public remoteTrack: any = [];
+  public room: any;
+  public audioTrack: any;
+  public connectingScreen: boolean | undefined;
+  public mic: boolean = true
+  public cam: boolean = true
+  public waiting: boolean = true;
+  public callingBox: boolean = false;
+  public joinTrue: boolean = false
+  public queueId: any = ''
+  public patientIn: boolean = false
+
+  startTimer() {
+    if (!this.isRunning) {
+      this.startTime = Date.now() - (this.lastElapsedTime > 0 ? this.lastElapsedTime : 0);
+      this.isRunning = true;
+      this.callStart = true;
+      this.interval = setInterval(() => {
+        const elapsedTime = Date.now() - this.startTime;
+        this.lastElapsedTime = elapsedTime;
+        this.time = this.formatTime(elapsedTime);
+      }, 1000);
+    }
+  }
+
+  pauseTimer() {
+    if (this.isRunning) {
+      clearInterval(this.interval);
+      this.isRunning = false;
+      this.callStart = false;
+    }
+  }
+
+  stopTimer() {
+    if (this.isRunning) {
+      clearInterval(this.interval);
+      this.isRunning = false;
+
+    }
+    this.resetCounters();
+  }
+  private formatTime(milliseconds: number): string {
+    const seconds = Math.floor(milliseconds / 1000) % 60;
+    const minutes = Math.floor(milliseconds / (1000 * 60)) % 60;
+    const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+    return `${this.formatDigit(hours)}:${this.formatDigit(minutes)}:${this.formatDigit(seconds)}`;
+  }
+
+  private formatDigit(digit: number): string {
+    return digit.toString().padStart(2, '0');
+  }
+
+  // to activate picture in picture mode.
+  activatePip(val: any = null) {
+    let video: any = (document.getElementById('videoPlayer') as HTMLElement);
+    if (video && document.pictureInPictureElement === video && this.joinTrue != true) {
+      document.exitPictureInPicture().catch(error => {
+        console.error('Failed to exit PiP mode:', error);
+      });
+    } else {
+      this.joinTrue = true;
+      video.requestPictureInPicture().catch((error: any) => {
+        console.error('Failed to enter PiP mode:', error);
+      });
+    }
+  }
+
+
+  exit() {
+    let video: any = (document.getElementById('videoPlayer') as HTMLElement);
+    document.exitPictureInPicture().catch(error => {
+      console.error('Failed to exit PiP mode:', error);
+    });
+  }
+
+
+  connecTwillio() {
+    // make a call or create a track for call
+    createLocalTracks({
+      audio: true,
+      video: true
+    }).then((localTracks: any) => {
+      this.callingBox = true
+      localTracks.forEach((track: any) => {
+        setTimeout(() => {
+          const localMediaContainer: any = document.getElementById('local-media');
+          if (this.ifVideoExist('remote-media-div') == null) {
+            let localattachDetail: HTMLElement = track.attach();
+            localattachDetail = track.attach();
+            localattachDetail.style.width = '100%';
+            if (localattachDetail != null) localMediaContainer.appendChild(localattachDetail);
+          }
+        }, 1000);
+      });
+      this.track = localTracks
+      // make twilio connection with server token and tracks
+      return connect(this.twillioToken, {
+        name: this.twillioRoom,
+        tracks: localTracks
+      });
+    }).then((room: any) => {
+      this.room = room;
+      this.onRemoteUserAppended(room)
+      this.onCallDisconnected(room)
+
+    });
+
+  }
+
+  // when remote/self user disconnect the call
+  onCallDisconnected(room: any) {
+    room.on('participantDisconnected', (inRoom: any) => {
+      this.openParticipantDisconnectedModal()
+    });
+  }
+
+  onRemoteUserAppended(room: any) {
+    // if remote media div is empty need to check if user reload the page 
+    if (this.ifVideoExist('remote-media-div') == null) {
+      setTimeout(() => {
+        room.participants.forEach((participant: any) => {
+          participant.tracks.forEach((publication: any) => {
+            let videoTrack = publication.track.attach();
+            videoTrack.style.width = "100%";
+            if (publication.track.kind === 'video') {
+              videoTrack.setAttribute('id', 'videoPlayer');
+            }
+            if (publication.track) {
+              this.loader = false;
+              (document.getElementById('remote-media-div') as HTMLElement).appendChild(videoTrack);
+            }
+          });
+          // when remote participant joined the call
+          participant.on('trackSubscribed', (track: any) => {
+            let videoTrack = track.attach();
+            videoTrack.style.width = "100%";
+            if (track.kind === 'video') {
+              videoTrack.setAttribute('id', 'videoPlayer');
+            }
+            this.loader = false;
+            (document.getElementById('remote-media-div') as HTMLElement).appendChild(videoTrack);
+          });
+        });
+      }, 700);
+
+
+      // when remote participant connnected
+      room.on('participantConnected', ((participant: any) => {
+        this.patientIn = true
+        participant.on('trackSubscribed', (track: any) => {
+          const remoteMediaDiv = document.getElementById('remote-media-div') as HTMLElement;
+          const existingVideo = remoteMediaDiv.querySelector('#videoPlayer');
+          if (this.remoteTrack.length < 3) this.remoteTrack.push(track);
+          let videoTrack = track.attach();
+          videoTrack.style.width = "100%";
+          if (track.kind === 'video') {
+            videoTrack.setAttribute('id', 'videoPlayer');
+            if (existingVideo != null) {
+              existingVideo.remove();
+            }
+          }
+          this.loader = false;
+
+          (document.getElementById('remote-media-div') as HTMLElement).appendChild(videoTrack);
+        });
+        this.joinTrue = true
+      }));
+    }
+  }
+
+  mountLocalUser() {
+    setTimeout(() => {
+      var localMediaContainer = document.getElementById('local-media') as HTMLElement;
+      this.track.forEach((track: any) => {
+        if (this.ifVideoExist('local-media') == null) {
+          let localattachDetail = track.attach();
+          localattachDetail.style.width = '100%';
+          localMediaContainer.appendChild(localattachDetail);
+        }
+      });
+    }, 1500);
+
+    this.mountRemoteUser();
+
+  }
+
+
+  mountRemoteUser() {
+    setTimeout(() => {
+      this.remoteTrack.forEach((track: any) => {
+        if (this.ifVideoExist('remote-media-div') == null) {
+          let videoTrack = track.attach();
+          videoTrack.style.width = "100%";
+          if (track.kind === 'video') {
+            videoTrack.setAttribute('id', 'videoPlayer');
+          }
+          (document.getElementById('remote-media-div') as HTMLElement).appendChild(videoTrack);
+        }
+      });
+      this.joinTrue = false
+    }, 1500);
+    this.exit();
+  }
+
+  // set call on mute by disable audio track
+  muteLocalAudioTrack(room: any, micVal: boolean) {
+    this.mic = micVal;
+    room.localParticipant.audioTracks.forEach((publication: any) => {
+      publication.track.disable();
+    });
+  }
+
+  // set call on unmute by disable audio track
+  unmuteLocalAudioTrack(room: any, micVal: boolean) {
+    this.mic = micVal;
+    room.localParticipant.audioTracks.forEach(
+      (publication: LocalAudioTrackPublication) => {
+        publication.track.enable(true);
+      }
+    );
+  }
+
+  // disable vidoe camera by disabling video track
+  disableLocalVideoTrack(room: any, camVal: boolean) {
+    this.cam = camVal
+    room.localParticipant.videoTracks.forEach((publication: LocalVideoTrackPublication) => {
+      publication.track.disable();
+    });
+  }
+
+   // enable vidoe camera by enabling video track
+  enableLocalVideoTrack(room: any, camVal: boolean) {
+    this.cam = camVal
+    room.localParticipant.videoTracks.forEach((publication: any) => {
+      publication.track.enable(true);
+    });
+  }
+
+  // disconnect the call form user end 
+  disconnectCall() {
+    if (!this.patientIn) {
+      this.rejectCall(this.queueId);
+    } else {
+      this.callEnded(this.queueId);
+    }
+    this.callEnd()
+
+  }
+
+  //on call end disconnect the twillio room and reset all relevant properties value for new user
+  callEnd(isValid:any = null) {
+    if (isValid !== true) {
+      this.room.localParticipant.tracks.forEach((publication: any) => {
+        publication.track.stop();
+        const attachedElements = publication.track.detach();
+        attachedElements.forEach((element: any) => element.remove());
+      });
+    }
+
+    this.room.disconnect();
+    this.callingBox = false
+    this.callStart = false
+    this.patientIn = false
+    this.completeCall = true
+  }
+
+  ifVideoExist(divId: any) {
+    const div = (document.getElementById(divId) as HTMLElement);
+    const existingVideo = div.querySelector('video');
+    return existingVideo;
+  }
+
+  rejectCall(id: any) {
+    this.http.getData(`call-not-answered/${id}`).subscribe({})
+  }
+  
+  // reset all timing counters to make next call
+  resetCounters() {
+    this.startTime = 0;
+    this.lastElapsedTime = 0;
+    this.time = '00:00:00';
+    this.isRunning = false;
+    this.joinTrue = false
+    this.callStart = false
+  }
+
+  callEnded(id: any) {
+    this.http.getData(`doctor/completeCall/${id}`).subscribe({})
+  }
+
+}
+
+
+/**************************************************************** Chat component.ts ****************************************************************************/
+
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { QueueDetail } from '../../models/gp-queueDetail';
+import { ChatService } from 'src/app/core/services/chat-service/chat.service';
+import { TwillioService } from 'src/app/core/services/common-service/twillio/twillio.service';
+import { PatientsQueueService } from 'src/app/core/services/doctors/patient-queue/patients-queue.service';
+import { MatDialog } from '@angular/material/dialog';
+import { NotificationType } from 'src/app/core/constants';
+import { SharedService } from 'src/app/core/services/common-service/shared/shared.service';
+import { CallDisconnectedComponent } from 'src/app/shared/components/call-disconnected/call-disconnected.component';
+import { CommonDialogComponent } from 'src/app/shared/components/common-dialog/common-dialog.component';
+import { AuthService } from 'src/app/authentication/services/auth.service';
+import { Subscription } from 'rxjs';
+import { LocalStorageService } from 'src/app/authentication/services/local-storage.service';
+import { StorageKeys } from 'src/app/core/utils/storage-keys';
+
+@Component({
+  selector: 'app-patient-call',
+  templateUrl: './patient-call.component.html',
+  styleUrls: ['./patient-call.component.scss']
+})
+export class PatientCallComponent implements OnInit, OnDestroy {
+  queueId: string
+  role: string
+  queueDetail!: QueueDetail
+  patients: any = [];
+  label: string = 'Please Wait';
+  noDataLabel: string = 'No Data Available';
+  pleaseWait: string = 'Please wait...';
+  _subscriptions: Subscription = new Subscription();
+
+  constructor(
+    private eventService: SharedService,
+    private router: Router,
+    private twillioService: TwillioService,
+    public dialog: MatDialog,
+    public chatService: ChatService,
+    private route: ActivatedRoute,
+    private patientQueueService: PatientsQueueService,
+    private auth: AuthService,
+    private local:LocalStorageService
+  ) { }
+
+  ngOnInit(): void {
+    this.getQueueId();
+    this.getNotify();
+    this.chatService.joinTrue == true ? this.chatService.mountLocalUser() : ''
+
+    // get loggedin user role 
+    this.role = this.auth.getActivatedRole();
+  }
+
+  // get notifications form firebase to trigger different event
+  getNotify() {
+    this._subscriptions.add(this.eventService.getEvent().subscribe({
+      next: (res: any) => {
+        let type = res.message.data.type;
+        type = Number(type)
+        switch (type) {
+          case NotificationType.CALLREJECTED:
+            this.chatService.callEnd()
+            this.chatService.callingBox = false
+            this.disconnectedModal();
+            break;
+          default:
+            break;
+        }
+      }
+    }));
+  }
+
+  // get token from backend and connect twillio
+  placeCall() {
+    this._subscriptions.add(this.twillioService.getTokenAndRoomForGp(this.queueId).subscribe({
+      next: (r: any) => {
+        this.chatService.twillioRoom = r.data.room
+        this.chatService.twillioToken = r.data.token
+        this.chatService.connecTwillio();
+      }
+    })); 
+  }
+
+
+  previewFile(file: any) {
+    let img: any;
+    if (file.includes('png') || file.includes('jpg') || file.includes('jpeg')) {
+      img = file;
+    } else {
+      img = './assets/img/google-docs.png'
+    }
+    return img;
+  }
+
+  // confirm disconnect modal
+  disconnectedModal() {
+    const dialogRef = this.dialog.open(CallDisconnectedComponent, {
+      disableClose: true,
+      width: '600px',
+    }).afterClosed().subscribe(data => {
+      console.log('Call disconnected.')
+    });
+  }
+
+  // confirm complete call modal
+  completeModal() {
+    this.dialog.open(CommonDialogComponent, {
+      disableClose: true, width: '600px', data: {
+        dialogTitle: 'Complete call',
+        dialogText: 'Are you sure you want to close this consult?',
+        consultCompleteStatus: true,
+        consultComplete: false
+      }
+    }).afterClosed().subscribe(data => {
+      if (data?.event == true) {
+        this.completeCall(data.data.consultComplete)
+      }
+    })
+  }
+ 
+  // Refund payment payload
+  completeRefund(isRefundCompleted:boolean){
+    let payload = {
+      queueId: this.queueId,
+      time: this.chatService.time,
+      status: NotificationType.CALLCOMPLETED,
+      isRefundCompleted:false
+    }
+    this._subscriptions.add(this.chatService.refundPayment(payload).subscribe(({ next: (res:any) => {
+      this.toaster('success','Refund initiated succcessfully')
+    },
+    })))
+  }
+
+  // Refund payment modal
+  refundModal() {
+    this.dialog.open(CommonDialogComponent, {
+      disableClose: true, width: '600px', data: {
+        dialogTitle: 'Complete Refund',
+        dialogText: 'Are you sure you want to refund payment?',
+        consultCompleteStatus: true,
+        
+        consultComplete: false
+      }
+    }).afterClosed().subscribe(data => {
+      if (data?.event == true) {
+        this.completeRefund(data.data.consultComplete)}
+    })
+  }
+
+  // Redirected to patient detail
+  redirectToPatientDetail(id: any, type: string) {
+    let isVideoExist = document.getElementById('local-media') as HTMLElement
+    if (isVideoExist != null) { this.chatService.joinTrue = true; this.chatService.activatePip() }
+    const url = this.router.createUrlTree(['doctor', 'patient-details', id, type]);
+    let storedPatientId = this.local.getStorage(StorageKeys.keys.PATIENTID);
+
+    if(storedPatientId !== id){
+      this.local.remove(StorageKeys.keys.CONSULTNOTES);
+      this.local.remove(StorageKeys.keys.RADIOLOGYPDFURL);
+      this.local.remove(StorageKeys.keys.PATHOLOGYPDFURL);
+      this.local.remove(StorageKeys.keys.PATIENTID);
+    }
+    window.open(url.toString(), '_blank');
+  }
+
+  getQueueId() {
+    this.queueId = this.route.snapshot.paramMap.get('queueId');
+    this.getQueueDetail(this.queueId);
+    this.chatService.queueId = this.queueId
+  }
+
+  getQueueDetail(queueId: string) {
+   this._subscriptions.add(this.patientQueueService.getQueueDetail(queueId).subscribe({
+    next: (items: any) => {
+      let data: QueueDetail = items.data
+      this.queueDetail = data
+    }
+  })); 
+  }
+
+  // submit all the captured queries.
+  completeCall(isCallCompleted: boolean) {
+    let payload = {
+      queueId: this.queueId,
+      time: this.chatService.time,
+      status: NotificationType.CALLCOMPLETED,
+      isCallCompleted:true
+    }
+    this.chatService.stopTimer();
+    if (this.chatService.callingBox == true) this.chatService.disconnectCall();
+   this._subscriptions.add(this.chatService.completeQueue(payload).subscribe(({
+    next: (res:any) => {
+      if (this.role == 'GP') {
+        this.router.navigate(['/doctor/patient-queue']);
+      } else if (this.role == 'Specialist') {
+        this.router.navigate(['/doctor/appointments']);
+      }
+
+      this.chatService.resetCounters();
+    },
+  }
+  ))); 
+  }
+
+  ngOnDestroy() {
+    this._subscriptions.unsubscribe();
+  }
+}
+
+
+
+/**************************************************************** videochat.html ****************************************************************************/
+
+
+<div class="card">
+  <div class="cardBody">
+    <div class="callALertText">
+      <p class="mb-0"><i class="fas fa-exclamation-triangle"></i>Please do not reload or leave the page until your call
+        is completed.</p>
+    </div>
+    <div class="notificationCard callCardDetail">
+      <div *ngIf="queueDetail; else waiting;">
+        <mat-card>
+          <mat-card-content>
+            <div class="consultDate text-align-right">
+              <h5>
+                Start Time
+                <button *ngIf="!chatService.isRunning" (click)="chatService.startTimer()">
+                  <i class="fas fa-play trigger"></i>
+                </button>
+                <button *ngIf="chatService.isRunning" (click)="chatService.pauseTimer()">
+                  <i class="fas fa-pause"></i></button><span>{{ chatService.time }}</span>
+              </h5>
+            </div>
+            <div>
+              <div class="row space-between align-center mb-4">
+                <div class="col-xs-6 col-md-6">
+                  <div class="consultView flex align-center space-between gap-3">
+                    <div class="viewImg">
+                      <img [src]="queueDetail.profile_pic" alt="img" />
+                    </div>
+                    <div class="consultMain">
+                      <h2>
+                        <a (click)="redirectToPatientDetail(queueDetail.patient_id,queueDetail.patient_type)">{{
+                          queueDetail.name || "-" }}
+                          <i class="fas fa-external-link-alt"></i>
+                        </a>
+                      </h2>
+                      <h4>UIN: {{ queueDetail.uin || 0000 }}</h4>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="flex align-center justify-end">
+                    <button class="patientCalling" (click)="placeCall()" matTooltip="Video Call" [disabled]="
+                     !chatService.callStart || chatService.callingBox
+                    ">
+                      <h5 class="mb-0 flex align-center">
+                        <i class="fas fa-video"></i>
+                      </h5>
+                    </button>
+
+                    <div class="patientCalling" matTooltip="9876543210">
+                      <h5 class="mb-0"><i class="fas fa-phone-alt"></i></h5>
+                    </div>
+                    <div class="patientCalling completeConsult" matTooltip="Complete Consult">
+                      <button class="mb-0" (click)="completeModal()">
+                        <h5 class="mb-0 flex align-center">
+                          <i class="fas fa-check-circle"></i>
+                        </h5>
+                      </button>
+
+                      <!-- <button [disabled]="!chatService.completeCall"  class="mb-0" (click)="completeModal()">
+                      <h5 class="mb-0 flex align-center">
+                        <i class="fas fa-check-circle"></i>
+                      </h5>
+                    </button> -->
+                    </div>
+                    <div class="patientCalling refundPayment" matTooltip="Refund payment" (click)="refundModal()">
+                      <h5 class="mb-0"><i class="fas fa-undo"></i></h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="consultDetails mb-4">
+                <div class="row">
+                  <div class="col-sm-3">
+                    <div class="consultCards">
+                      <h4>Nature of Consult</h4>
+                      {{ queueDetail.reason || "-" }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="uploadedHistory">
+                <div class="UploadedDocs formGroup mb-4">
+                  <h4>Images/Documents</h4>
+                  <div *ngIf="queueDetail.documents.length > 0; else noData" class="uploadedDocuments flex flex-wrap">
+                    <div *ngFor="let documents of queueDetail.documents" class="uploadHisImg documentUpload ">
+                      <a [href]="documents" target="_blank"><img [src]="previewFile(documents)" alt="Image" width="200" srcset="" />
+                      </a>
+                    </div>
+                  </div>
+                  <ng-template #noData>
+                    <p>No Images/Documents found</p>
+                  </ng-template>
+                </div>
+                <div class="UploadedDes formGroup">
+                  <h4>Additional Information</h4>
+                  <p>
+                    {{
+                    queueDetail.description || "No additional information found"
+                    }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </mat-card-content>
+        </mat-card>
+      </div>
+      <ng-template #waiting label>
+        <div class="screenWaiting">
+          <div class="noData"><p class="mb-0">No Data Available</p></div>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+<div class="videoModal" *ngIf="chatService.callingBox" cdkDrag>
+  <div class="topVideoBar flex align-center space-between">
+    <div class="videoTimer">
+      <p class="mb-0">{{ chatService.time }}</p>
+    </div>
+    <div class="videoMaximizeMove flex align-center gap-3">
+      <div class="minimizeButton">
+        <i class="fas fa-minus" matTooltipClass="tooltipClass" matTooltip="Minimize Video"></i>
+      </div>
+      <div class="movableIcon" cdkDragHandle>
+        <i class="fas fa-arrows-alt" matTooltip="Move" matTooltipClass="tooltipClass"></i>
+      </div>
+    </div>
+  </div>
+  <div class="videoScreen">
+    <div class="row space-between">
+      <div class="col-sm-4 col-md-4">
+        <div class="localvideoSec">
+          <div id="localDiv"></div>
+          <div class="localVideo" id="local-media"></div>
+          <div class="videosMains flex align-center justify-center">
+            <button *ngIf="chatService.mic" class="videoMainsIcon muteIcon"
+              (click)="chatService.muteLocalAudioTrack(chatService.room, false)">
+              <i class="fa fas fa-microphone"></i>
+            </button>
+            <button *ngIf="!chatService.mic" class="videoMainsIcon muteIcon" (click)="
+                chatService.unmuteLocalAudioTrack(chatService.room, true)
+              ">
+              <i class="fa fa-microphone-slash"></i>
+            </button>
+            <button *ngIf="chatService.cam" class="videoMainsIcon faVideo" (click)="
+                chatService.disableLocalVideoTrack(chatService.room, false)
+              ">
+              <i class="fa fas fa-video"></i>
+            </button>
+            <button *ngIf="!chatService.cam" class="videoMainsIcon faVideo" (click)="
+                chatService.enableLocalVideoTrack(chatService.room, true)">
+              <i class="fa fas fa-video-slash"></i>
+            </button>
+            <button class="videoMainsIcon phoneSlash" (click)="chatService.disconnectCall()">
+              <i class="fas fa-phone-slash"></i>
+            </button>
+
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-7 col-md-7">
+        <div class="remoteVideoSec">
+          <div class="remoteVideo" id="remote-media-div"></div>
+
+          <button class="pipMode" (click)="chatService.activatePip()">
+            <i class="fas fa-image"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

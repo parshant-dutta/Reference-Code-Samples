@@ -1,0 +1,146 @@
+/******************************************************************* component.ts ************************************************************************************/
+
+
+import { Component } from '@angular/core';
+import { FirebaseService } from 'src/app/core/services/firebase/firebase.service';
+import { MatIconRegistry } from '@angular/material/icon';
+import { DomSanitizer } from '@angular/platform-browser';
+import { SharedService } from './core/services/common-service/shared/shared.service';
+import { NotificationType } from 'src/app/core/constants';
+import { Router, ActivatedRoute } from '@angular/router';
+import { CommonDialogComponent } from './shared/components/common-dialog/common-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
+import { AuthService } from './authentication/services/auth.service';
+@Component({
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss']
+})
+export class AppComponent {
+    title = 'Tele-health';
+    myAudio = new Audio('assets/facetime_call.mp3');
+    playAudio: any;
+
+    constructor(private firebaseService: FirebaseService,
+        private matIconRegistry: MatIconRegistry,
+        private domSanitizer: DomSanitizer, private shared: SharedService, private router: Router, public dialog: MatDialog, private auth: AuthService, private activeRoute: ActivatedRoute
+    ) {
+        this.matIconRegistry.addSvgIcon(
+            `bank-name-icon`,
+            this.domSanitizer.bypassSecurityTrustResourceUrl(
+                './assets/icons/bank.svg'
+            )
+        );
+        this.matIconRegistry.addSvgIcon(
+            `bank-branch-icon`,
+            this.domSanitizer.bypassSecurityTrustResourceUrl(
+                './assets/icons/bank-branch.svg'
+            )
+        );
+        this.matIconRegistry.addSvgIcon(
+            `account-holder-icon`,
+            this.domSanitizer.bypassSecurityTrustResourceUrl(
+                './assets/icons/account-holder.svg'
+            )
+        );
+        this.matIconRegistry.addSvgIcon(
+            `account-holder-icon`,
+            this.domSanitizer.bypassSecurityTrustResourceUrl(
+                './assets/icons/account-holder.svg'
+            )
+        );
+        this.matIconRegistry.addSvgIcon(
+            `account-number-icon`,
+            this.domSanitizer.bypassSecurityTrustResourceUrl(
+                './assets/icons/account-number.svg'
+            )
+        );
+
+
+    }
+
+    ngOnInit(): void {
+
+        /** 
+        * get firebase notification and trigger event based on notification type. 
+        * Like make a call, disconnect call, increase online doctor count etc.
+        */
+
+        this.getNotifications();
+        this.shared.getEvent().subscribe({
+            next: (res: any) => {
+                let type = res.message.data.type ? res.message.data.type : res.message.data.status;
+                type = Number(type);
+                let role = this.auth.getActivatedRole()
+                if ((type == NotificationType.QUEUEUPDATED || type == NotificationType.QUEUEACCEPTED) && this.router.url !== '/doctor/patient-queue' && this.router.url !== 'doctor/queue-detail/:id' && this.auth.getCurrentUser().id == res.message.data?.id && role !== 'Patient' && role !== 'Admin') {
+                    this.myAudio.play();
+                    this.playAudio = setInterval(() => {
+                        this.myAudio.play();
+                    }, 20000);
+                    this.dialog.open(CommonDialogComponent, {
+                        disableClose: true, width: '600px', data: {
+                            dialogTitle: 'Call In Queue',
+                            dialogText: 'There is a call in the Queue.',
+                        }
+                    }).afterClosed().subscribe(data => {
+                        if (data?.event == true) {
+                            this.myAudio.pause();
+                            clearInterval(this.playAudio);
+                            this.router.navigate(['doctor', 'patient-queue']);
+                        }
+                    });
+                }
+            }
+        });
+    }
+    async getNotifications() {
+        try {
+            const res = await this.firebaseService.listen();
+        } catch (err) {
+            console.error('Error while listening for notifications:', err);
+        }
+    }
+
+}
+
+
+/******************************************************************** Firebase service.ts **********************************************************************************/
+
+import { Injectable } from '@angular/core';
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { environment } from 'src/environments/environment';
+import { SharedService } from '../common-service/shared/shared.service';
+
+@Injectable({
+    providedIn: 'root'
+})
+export class FirebaseService {
+
+    constructor(private eventService: SharedService) { }
+
+    // generate device token for firebase
+    async requestPermission() {
+        const messaging = getMessaging();
+        try {
+            const currentToken = await getToken(messaging, { vapidKey: environment.firebase.vapidKey });
+            if (currentToken) {
+                return currentToken;
+            } else {
+                return null; // You can return null or handle this case accordingly
+            }
+        } catch (err) {
+            throw err; // Rethrow the error so that it can be handled in the component
+        }
+    }
+
+    // listen events from firebase sdk to get notifications
+    listen() {
+        const messaging = getMessaging();
+        return new Promise((resolve, reject) => {
+            onMessage(messaging, (payload) => {
+                resolve(payload);
+                this.eventService.sendEvent({ message: payload });
+            });
+        });
+    }
+}

@@ -1,0 +1,961 @@
+/** patient details and add notes */
+
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { TestformDialogComponent } from 'src/app/shared/components/testform-dialog/testform-dialog.component';
+import { ActivatedRoute, Router } from '@angular/router';
+import { PatientsQueueService } from 'src/app/core/services/doctors/patient-queue/patients-queue.service';
+import { ValidationService } from 'src/app/authentication/services/validation.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+import { CommonDialogComponent } from 'src/app/shared/components/common-dialog/common-dialog.component';
+import { ConvertDateTimePipe } from 'src/app/core/pipes/convert-date-time/convert-date-time.pipe';
+import { Subscription } from 'rxjs';
+import { LocalStorageService } from 'src/app/authentication/services/local-storage.service';
+import { StorageKeys } from 'src/app/core/utils/storage-keys';
+import { PatientPrescriptionService } from 'src/app/core/services/doctors/patient-prescription.service';
+import { DATE_FORMAT } from 'src/app/shared/components/timeStamp-constant';
+
+@Component({
+  selector: 'app-patient-details',
+  templateUrl: './patient-details.component.html',
+  styleUrls: ['./patient-details.component.scss'],
+})
+export class PatientDetailsComponent implements OnInit, OnDestroy {
+  patientId: any;
+  patientDetail!: any;
+  eventForm!: FormGroup;
+  patientType: any;
+  private _subscriptions: Subscription = new Subscription();
+  selectedTab: any;
+  isRadiologyPdf: boolean = false;
+  isPathologyPdf: boolean = false;
+  checked: boolean = false;
+  patientResult: any
+  medicareNumber: boolean = false
+  reference: boolean = false
+  medical_history = ''
+  medication_allergy = ''
+  fileType: any;
+  doctorId: any;
+  type: any;
+
+  constructor(
+    private toast: ToastrService,
+    private formBuilder: FormBuilder,
+    private route: ActivatedRoute,
+    private router: Router,
+    public patientsQueueService: PatientsQueueService,
+    public dialog: MatDialog,
+    public validationService: ValidationService,
+    private datepipe: ConvertDateTimePipe,
+    private local: LocalStorageService,
+    private prescriptionService: PatientPrescriptionService) { }
+
+    @HostListener('window:beforeunload', ['$event'])
+    beforeUnloadHander(event: any) {
+      this._subscriptions.add(this.patientsQueueService.removeRequest(this.patientId,this.doctorId).subscribe(({
+        next: (res) => {
+          console.log(res)
+        }})))
+      return false;
+  
+    }
+
+  ngOnInit() {
+    const routerState: any = this.router.lastSuccessfulNavigation?.extras.state;
+    this.selectedTab = routerState?.selectedTab
+    this.getPatientId();
+    this.buildForm();
+    this.bindFormValue();
+    this.getResult()
+  }
+
+  buildForm() {
+    this.eventForm = this.formBuilder.group({
+      presenting_complaints: ['', [Validators.required]],
+      impression: ['', [Validators.required]],
+      investigation: ['', [Validators.required]],
+      plan: ['', [Validators.required]],
+      billing_notes: ['', [Validators.required]],
+      consent_confirmed: [false],
+      seeing_confirmed: [false]
+    })
+  }
+
+
+  bindFormValue() {
+    let localStorageNotes = this.local.getStorage(StorageKeys.keys.CONSULTNOTES);
+    let radioLogyUrl = this.local.getStorage(StorageKeys.keys.RADIOLOGYPDFURL);
+    let pathologyUrl = this.local.getStorage(StorageKeys.keys.PATHOLOGYPDFURL);
+
+    if (radioLogyUrl) {
+      this.isRadiologyPdf = true;
+      this.selectedTab = 2;
+    }
+
+    if (pathologyUrl) {
+      this.isPathologyPdf = true;
+      this.selectedTab = 2;
+
+    }
+    if (localStorageNotes) {
+      let formVal = JSON.parse(localStorageNotes);
+
+      if (formVal) {
+        this.eventForm.patchValue({
+          presenting_complaints: formVal.presenting_complaints,
+          impression: formVal.impression,
+          investigation: formVal.investigation,
+          plan: formVal.plan,
+          billing_notes: formVal.billing_notes,
+          seeing_confirmed: formVal.seeing_confirmed,
+          consent_confirmed: formVal.consent_confirmed
+        })
+      }
+    }
+  }
+
+  onSubmit() {
+
+    if (!this.eventForm.controls['consent_confirmed'].value) {
+      this.eventForm.controls['consent_confirmed'].setErrors({ required: true });
+      window.scrollTo(0, 0);
+    }
+
+    if (!this.eventForm.controls['seeing_confirmed'].value) {
+      this.eventForm.controls['seeing_confirmed'].setErrors({ required: true });
+    }
+    if (this.eventForm.invalid) {
+      this.eventForm.markAllAsTouched();
+      return
+    }
+    let formVal = this.eventForm.value;
+    let pathologyUrl = this.local.getStorage(StorageKeys.keys.PATHOLOGYPDFURL);
+    let radiology = this.local.getStorage(StorageKeys.keys.RADIOLOGYPDFURL);
+    let file_id = this.local.getStorage(StorageKeys.keys.FILEID)
+    let prescription_id = this.local.getStorage(StorageKeys.keys.PERSCRIPTIONFILEID)
+    let payload = {
+      user_id: this.patientId,
+      presenting_complaints: formVal.presenting_complaints,
+      investigation: formVal.investigation,
+      impression: formVal.impression,
+      plan: formVal.plan,
+      billing_notes: formVal.billing_notes,
+      consent_confirmed: formVal.consent_confirmed,
+      seeing_confirmed: formVal.seeing_confirmed,
+      pathology_path: pathologyUrl ? JSON.parse(pathologyUrl) : '',
+      radiology_path: radiology ? JSON.parse(radiology) : '',
+      file_id: file_id,
+      prescription_id: prescription_id
+    }
+    this._subscriptions.add(this.patientsQueueService.saveConsultNotes(payload).subscribe(({
+      next: (res) => {
+        this.toast.success('Notes added successfully!!')
+        this.eventForm.reset();
+        this.local.remove(StorageKeys.keys.CONSULTNOTES);
+        this.local.remove(StorageKeys.keys.RADIOLOGYPDFURL);
+        this.local.remove(StorageKeys.keys.PATHOLOGYPDFURL);
+        this.local.remove(StorageKeys.keys.PATIENTID);
+        this.isRadiologyPdf = false;
+        this.isPathologyPdf = false;
+        this.getPatientDetail(this.patientId, this.patientType);
+        localStorage.setItem(StorageKeys.keys.FILEID, '')
+        localStorage.setItem(StorageKeys.keys.PERSCRIPTIONFILEID, '')
+
+      },
+      error: (err) => {
+      }
+    })));
+  }
+
+  getPatientId() {
+
+    this.route.paramMap.subscribe(params => {
+      // Update detail page when the route parameters change
+      this.patientId = params.get('patientId');
+      this.patientType = this.route.snapshot.paramMap.get('type');
+      this.getPatientDetail(this.patientId, this.patientType);
+    });
+
+
+  }
+
+  getErrorValidator(value: any, label: string) {
+    return this.validationService.getErrorValidationMessages(value, this.eventForm, label);
+  }
+
+
+  convertTimeStamp(value: any) {
+    return this.datepipe.transform(value, DATE_FORMAT);
+  }
+
+
+  getPatientDetail(patientId: any, patientType: string) {
+    this._subscriptions.add(this.patientsQueueService.getInQueuePatientDetail(patientId, patientType).subscribe({
+      next: (res: any) => {
+        let data: any = res.data;
+        if (data) {
+          this.patientDetail = data;
+          this.patientDetail.inCompleteNote = Object.values(this.patientDetail.inCompleteNote);
+          let docId = JSON.parse(localStorage.getItem('user')!)
+          this.doctorId = docId.id
+        }
+      },
+      error: (e: any) => console.log(e),
+      complete: () => console.log('completed'),
+    }));
+  }
+
+
+  getPatientNotes(e: any) {
+    let type = e.checked == true ? 1 : 0;
+    this.patientsQueueService.getPatientNotes(this.patientId, type).subscribe({
+      next: (res: any) => {
+        let data: any = res.data;
+        if (data) {
+          this.patientDetail.notes = [];
+          this.patientDetail.notes = res.data.notes;
+        }
+      },
+      error: (e: any) => console.log(e),
+      complete: () => console.log('completed'),
+    })
+  }
+
+  addAttachment() {
+    this.dialog.open(TestformDialogComponent, {
+      data: this.patientId
+    }).afterClosed().subscribe(data => {
+      console.log('data:', data)
+      if (data?.event == true) {
+        let formVal = this.eventForm.value;
+        this.local.setStorage(StorageKeys.keys.CONSULTNOTES, formVal);
+      }
+      this.getPatientDetail(this.patientId, this.patientType)
+    });
+  }
+
+  addNotes() {
+    const dialogRef = this.dialog.open(CommonDialogComponent, {
+      data: { dialogTitle: 'Add Notes', dialogText: 'Are you sure you want to submit this form. Once submitted you are unable to edit it.' },
+      width: '600px',
+      disableClose: true
+    }).afterClosed().subscribe(data => {
+      if (data.event) {
+        this.onSubmit();
+      }
+    })
+  }
+
+
+  SendFileToPatient(type: string, id:any, i:number, j:number) {
+    let firstIndex = i;
+    let secondIndex= j;
+    if (type == 'pathology' || type == 'radiology' || type == 'attachment') {
+      this.type = 'file';
+    } else {
+      this.type = 'prescription';
+    }
+    this.prescriptionService.sendRequest(this.type,id).subscribe({
+      next: (res: any) => {
+        this.toast.success('Report send to Patient successfully!')
+
+        if(type == 'pathology' || type == 'radiology' || type == 'attachment') {
+          this.patientDetail.notes[firstIndex].note_file[secondIndex].status = 1;   
+        } else {
+          this.patientDetail.notes[firstIndex].prescriptions[secondIndex].status = 1;
+        }
+
+      }, error: (err: any) => {
+
+      }
+    })
+  }
+
+  CancelRequest(val: string, fileId: any, index?: number) {
+    const dialogRef = this.dialog
+      .open(CommonDialogComponent, {
+        data: {
+          dialogTitle: 'Cancel',
+          dialogText:
+            val == 'pathology'
+              ? 'Are you sure you want to Cancel the Pathology Request'
+              : 'Are you sure you want to Cancel the Radiology Request',
+        },
+        width: '600px',
+        disableClose: true,
+      })
+      .afterClosed()
+      .subscribe((data) => {
+        if (data.event) {
+          if (val == 'pathology' || val == 'radiology' || val == 'attachment') {
+            this.fileType = 'file';
+          } else {
+            this.fileType = 'prescription';
+          }
+          this.prescriptionService.cancelPdfRequest(fileId, this.fileType).subscribe({
+            next: (res: any) => {
+              if (val == 'pathology') {
+                this.local.remove(StorageKeys.keys.PATHOLOGYPDFURL);
+                this.isPathologyPdf = false;
+              } else if (val == 'radiology') {
+                this.local.remove(StorageKeys.keys.RADIOLOGYPDFURL);
+                this.isRadiologyPdf = false;
+              } else if (val == 'attachment') {
+                // Handle the case for attachments if necessary
+              }
+              if (index != undefined) {
+                this.updateList(index, val);
+              }
+            },
+            error: (err: any) => {
+              console.error('Error cancelling PDF request:', err);
+            },
+          });
+        }
+      });
+  }
+
+  updateList(index: number, type: string) {
+    if (type == 'pathology' || type == 'radiology' || type == 'attachment') {
+      this.patientDetail.inCompleteNote.splice(index, 1);
+    }
+    else {
+      this.patientDetail.inCompletePre.splice(index, 1)
+    }
+  }
+  // To show patient result
+  getResult() {
+    this.patientsQueueService.showResult(this.patientId).subscribe({
+      next: (res: any) => {
+        this.patientResult = res.data;
+      }
+    })
+  }
+  changeInput() {
+    this.medicareNumber = true
+  }
+  changeReferenceinput() {
+    this.reference = true
+  }
+
+  onSubmitMedicalInformation() {
+    let payload = {
+      medical_history: this.medical_history,
+      medication_allergy: this.medication_allergy
+    }
+    this.patientsQueueService.medicalInformation(this.patientId, payload).subscribe({
+      next: (res: any) => {
+
+      }
+    })
+  }
+  ngOnDestroy() {
+    this._subscriptions.unsubscribe();
+  }
+}
+
+
+
+/********************************************************* patient details and notes.html *********************************************************************/
+
+
+<div class="card">
+  <div class="cardBody">
+    <app-patient-information [patientDetail]="patientDetail"></app-patient-information>
+
+    <div class="internalTabs">
+      <mat-tab-group animationDuration="0ms" [selectedIndex]="selectedTab">
+
+        <mat-tab label="Contact Details">
+          <div id="contactDetails" class="patientTabs mb-3">
+            <mat-card-content *ngIf="patientDetail" class="internalCards">
+              <div class="row">
+                <div class="col-xs-12 col-md-12">
+                  <h4 class="mainHeader">Contact Information</h4>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Mobile Number</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.patient.phone_number || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Email</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.patient.email || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-xs-12 col-md-12">
+                  <h4 class="mainHeader">Address Information</h4>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Unit/Street Number</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.address.street_number || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Suburb</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.address.suburb || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">State</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.address.state || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Postcode</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.address.postcode || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-12 col-md-12">
+                  <h4 class="mainHeader">Patient Registration Details</h4>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Medicare Number</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.medical.medicare_number || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">Reference Number</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail.medical.ref_medicare_number || "-" }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-xs-6 col-md-6">
+                  <div class="infoDetails">
+                    <div class="detailsSubHead">
+                      <h4 class="mb-0">IHI Number</h4>
+                    </div>
+                    <div class="detailsSubText">
+                      <h3 class="mb-0">
+                        {{ patientDetail?.patient.ihiNumber }}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-card-content>
+          </div>
+        </mat-tab>
+        <mat-tab label="Medical Information">
+          <div id="medicalInfo" class="patientTabs">
+            <div class="row" *ngIf="patientDetail">
+              <div class="col-xs-6 col-md-6">
+                <div class="infoDetails">
+                  <div class="detailsSubHead">
+                    <h4 class="mb-0">Medical History</h4>
+                  </div>
+                  <div class="detailsSubText">
+                    <h3 class="mb-0" (click)="changeInput()" *ngIf="!medicareNumber">
+                      {{ patientDetail.patient.medical_history }}
+                    </h3>
+                    <p *ngIf="!patientDetail.patient.medical_history  || medicareNumber">
+                      <mat-form-field appearance="outline" class="detailFormMediacal">
+                        <input matInput type="text" value=" {{ patientDetail.patient.medical_history }}"
+                          [(ngModel)]="medical_history" (blur)="onSubmitMedicalInformation()">
+                      </mat-form-field>
+                    </p>
+                    <h3 class="mb-0" *ngIf="patientDetail?.patient.medical_history_date ">Date:
+                      {{patientDetail?.patient.medical_history_date *1000 | date : 'dd MMM,yyyy'}}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-xs-6 col-md-6">
+                <div class="infoDetails">
+                  <div class="detailsSubHead">
+                    <h4 class="mb-0">Medications/Allergy</h4>
+                  </div>
+                  <div class="detailsSubText">
+                    <h3 class="mb-0" (click)="changeReferenceinput()" *ngIf="!reference">
+                      {{ patientDetail.patient.medication_allergy }}
+                    </h3>
+                    <p *ngIf="!patientDetail.patient.medication_allergy || reference">
+                      <mat-form-field appearance="outline" class="detailFormMediacal">
+                        <input matInput type="text" value="{{patientDetail.patient.medication_allergy}}"
+                          [(ngModel)]="medication_allergy" (blur)="onSubmitMedicalInformation()">
+                      </mat-form-field>
+                    </p>
+                    <h3 *ngIf="patientDetail?.patient?.medication_allergy_date">Date :
+                      {{patientDetail?.patient?.medication_allergy_date *1000 | date : 'dd MMM,yyyy'}}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-xs-12">
+                <div class="notesDetails">
+                  <div class="detailsSubHead">
+                    <h4 class="mb-0">Medical Info</h4>
+                  </div>
+                  <div class="textareaField">
+                    <p>
+                      {{ patientDetail.medicalInfo.notes }}
+                    </p>
+                    <h3 *ngIf="patientDetail?.medicalInfo?.created_at">Date : {{patientDetail?.medicalInfo?.created_at
+                      *1000 | date : 'dd MMM,yyyy'}}</h3>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+        <mat-tab label="Consult Notes">
+          <div id="consultNotes" class="patientTabs">
+            <form [formGroup]="eventForm">
+              <app-common-checkbox class="termCondition" [control]="'consent_confirmed'" [form]="eventForm" [label]="
+                    'Patient ID confirmed including DOB & address. Consent for telehealth obtained and limitations discussed.'
+                  "></app-common-checkbox>
+              <span class="customValidation">{{getErrorValidator(
+                'consent_confirmed',
+                'Field')}}</span>
+              <div class="notesDetails">
+                <div class="textareaField">
+                  <app-common-text-area [control]="'presenting_complaints'" [form]="eventForm"
+                    [label]="'Presenting Complaints'" [error]="
+                      getErrorValidator(
+                        'presenting_complaints',
+                        'Presenting Complaints'
+                      )">
+                  </app-common-text-area>
+                </div>
+              </div>
+              <div class="notesDetails">
+                <div class="textareaField">
+                  <app-common-text-area [control]="'impression'" [form]="eventForm" [label]="'Impression'"
+                    [error]="getErrorValidator('impression', 'Impression')"></app-common-text-area>
+                </div>
+              </div>
+              <div class="notesDetails">
+                <div class="textareaField">
+                  <app-common-text-area [control]="'investigation'" [form]="eventForm"
+                    [label]="'Examination/investigation '" [error]="
+                      getErrorValidator('investigation', 'Investigation')
+                    "></app-common-text-area>
+                </div>
+              </div>
+              <div class="notesDetails">
+                <div class="textareaField">
+                  <app-common-text-area [control]="'plan'" [form]="eventForm" [label]="'Plan'"
+                    [error]="getErrorValidator('plan', 'Plan')"></app-common-text-area>
+                </div>
+              </div>
+
+              <div class="notesDetails">
+                <div class="textareaField">
+                  <app-common-text-area [control]="'billing_notes'" [form]="eventForm" [label]="'Billing Notes'"
+                    [error]="
+                      getErrorValidator('billing_notes', 'Billing Notes')
+                    "></app-common-text-area>
+                </div>
+              </div>
+
+              <app-common-checkbox class="termCondition" [control]="'seeing_confirmed'" [form]="eventForm" [label]="
+                  'Patient consulted about presenting to their regular GP in person.'"></app-common-checkbox>
+              <span class="customValidation">{{getErrorValidator(
+                'seeing_confirmed',
+                'Field')}} </span>
+              <div class="addAttachmemetNotes">
+                <div class="row">
+                  <div class="col-sm-12">
+                    <div class="attachmentBtn">
+                      <button mat-raised-button (click)="addAttachment()" class="themeBlue">
+                        <i class="fas fa-paperclip"></i>Add Attachment
+                      </button>
+                      <!-- <div class="previousHistoryCards">
+                        <div class="previousHistoryDetail">
+                          <div class="flex pdfElementWrapper" >
+                            <div class="pdfName" *ngFor="let report of patientDetail.inCompleteNote">
+                              <div class="report">
+                                <div class="pdflogo">
+                                  <h4 class="mb-0">PDF</h4>
+                                </div>
+                                <div class="pdfName" *ngIf="report.type =='pathology'">
+                                  <p class="mb-0"><a href="{{report.path}}" target="_blank">Pathology Request PDF</a></p>
+                                </div>
+                                <div class="pdfName" *ngIf="report.type =='radiology'">
+                                  <p class="mb-0"><a href="{{report.path}}" target="_blank">Radiology Request PDF</a></p>
+                                </div>
+                                <div class="pdfName" *ngIf="report.type == 'attachment'">
+                                  <p class="mb-0"><a href="{{report.path}}" target="_blank">Download Attachment PDF</a></p>
+                                </div>
+                                <div class="pdfDropdown">
+                                  <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                                  <mat-menu #menu="matMenu">
+                                    <ul class="listingMenus">
+                                      <li><a href="{{report.path}}">Preview</a></li>
+                                      <li><a (click)="CancelRequest(report.type)">Cancel Request</a></li>
+                                    </ul>
+                                  </mat-menu>
+                                </div>
+                              </div>
+                          </div>
+                          <div class="flex pdfElementWrapper">
+                            <div class="pdfDetails pdfDownload flex">
+                              <div class="perscriptionPdf " *ngFor="let report of patientDetail.inCompletePre">
+                                <div class="report elementsReports">
+                                  <div class="pdflogo">
+                                    <h4 class="mb-0">PDF</h4>
+                                  </div>
+                                  <div class="pdfName">
+                                    <p class="mb-0"><a href="{{report.path}}" target="_blank"> {{report.type}}</a></p>
+                                  </div>
+                                  <div class="pdfDropdown">
+                                    <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                                    <mat-menu #menu="matMenu">
+                                      <ul class="listingMenus">
+                                        <li><a href="{{report.path}}">Preview</a></li>
+                                        <li><a (click)="CancelRequest(report.type)">Cancel Request</a></li>
+                                      </ul>
+                                    </mat-menu>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                      </div>
+                      -->
+                      <div class="previousHistoryCards">
+                        <div class="previousHistoryDetail" >
+                          <!-- <div class="flex gap-4"> -->
+                            <div class="flex pdfElementWrapper">
+                              <div class="pdfDetails pdfDownload flex elementsReports">
+                                <div class="pdfName" *ngFor="let report of patientDetail?.inCompleteNote, index as i">
+                                  <div class="report">
+                                    <div class="pdflogo">
+                                      <h4 class="mb-0">PDF</h4>
+                                    </div>
+                                    <div class="pdfName" *ngIf="report.type === 'pathology'">
+                                      <p class="mb-0"><a [href]="report.path" target="_blank">Pathology Request PDF</a></p>
+                                    </div>
+                                    <div class="pdfName" *ngIf="report.type === 'radiology'">
+                                      <p class="mb-0"><a [href]="report.path" target="_blank">Radiology Request PDF</a></p>
+                                    </div>
+                                    <div class="pdfName" *ngIf="report.type === 'attachment'">
+                                      <p class="mb-0"><a [href]="report.path" target="_blank">Download Attachment PDF</a></p>
+                                    </div>
+                                    <div class="pdfDropdown">
+                                      <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                                      <mat-menu #menu="matMenu">
+                                        <ul class="listingMenus">
+                                          <li><a [href]="report.path" target="_blank">Preview</a></li>
+                                          <li><a (click)="CancelRequest(report.type, report.file_id, i)">Cancel Request</a></li>
+                                        </ul>
+                                      </mat-menu>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="flex pdfElementWrapper">
+                              <div class="pdfDetails pdfDownload flex elementsReports">
+                                <div class="perscriptionPdf" *ngFor="let report of  patientDetail?.inCompletePre, index as i">
+                                  <div class="report">
+                                    <div class="pdflogo">
+                                      <h4 class="mb-0">PDF</h4>
+                                    </div>
+                                    <div class="pdfName">
+                                      <p class="mb-0"  matTooltip="{{report.type}}"><a href="{{report.path}}" target="_blank"> {{report.type}}</a></p>
+                                    </div>
+                                    <div class="pdfDropdown">
+                                      <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                                      <mat-menu #menu="matMenu">
+                                        <ul class="listingMenus">
+                                          <li><a href="{{report.path}}">Preview</a></li>
+                                          <li><a (click)="CancelRequest(report.type, report.file_id, i)">Cancel Request</a></li>
+                                        </ul>
+                                      </mat-menu>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                          <!-- </div> -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-sm-12">
+                    <div class="addingNotes text-align-right">
+                      <mat-checkbox (change)="getPatientNotes($event)" class="example-margin" [(ngModel)]="checked"
+                        [ngModelOptions]="{standalone: true}">
+                        My Notes
+                      </mat-checkbox>
+                      <button (click)="addNotes()" mat-raised-button class="themeBtn">
+                        Add Notes
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </form>
+            <!-- <div class="pdfDetails flex">
+              <div class="pathologyReport" *ngFor="let report of pathology">
+                <div class="pdflogo">
+                  <h4 class="mb-0">PDF</h4>
+                </div>
+                <div class="pdfName">
+
+                  <p class="mb-0"><a href="{{report}}" target="_blank">Pathology Request.pdf</a></p>
+                </div>
+                <div class="pdfDropdown">
+                  <button mat-button [matMenuTriggerFor]="menu">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
+                  <mat-menu #menu="matMenu">
+                    <ul class="listingMenus">
+                      <li>
+                        <a href="{{report}}"> Preview</a>
+                      </li>
+                      <li>
+                        <a (click)="SendFileToPatient('pathology')"> Send to patient</a>
+                      </li>
+                      <li>
+                        <a (click)="CancelRequest('pathology')">Cancel Pathology Request</a>
+                      </li>
+                    </ul>
+                  </mat-menu>
+                </div>
+              </div>
+            </div>
+            <div class="pdfDetails flex">
+              <div class="radiologyReport" *ngFor="let report of radiology">
+                <div class="pdflogo">
+                  <h4 class="mb-0">PDF</h4>
+                </div>
+                <div class="pdfName">
+                  <p class="mb-0"><a href="{{report}}" target="_blank">Radiology Request.pdf</a></p>
+                </div>
+                <div class="pdfDropdown">
+                  <button mat-button [matMenuTriggerFor]="menu">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
+                  <mat-menu #menu="matMenu">
+                    <ul class="listingMenus">
+                      <li>
+                        <a href="{{report}}"> Preview</a>
+                      </li>
+                      <li>
+                        <a (click)="SendFileToPatient('radiology')"> Send to patient</a>
+                      </li>
+                      <li>
+                        <a (click)="CancelRequest('radiology')">Cancel Radiology Request</a>
+                      </li>
+                    </ul>
+                  </mat-menu>
+                </div>
+              </div>
+            </div> -->
+            <!-- <div class="pdfDetails flex" *ngFor="let report of patientDetail">
+              <div class="report">
+                <div class="pdflogo"><h4 class="mb-0">PDF</h4></div>
+                <div class="pdfName">
+                  <p class="mb-0"><a href="{{report.path}}" target="_blank">{{report.type}}</a></p>
+                </div>
+                <div class="pdfDropdown">
+                  <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                  <mat-menu #menu="matMenu">
+                    <ul class="listingMenus">
+                      <li><a href="{{report.path}}">Preview</a></li>
+                      <li><a (click)="SendFileToPatient(report.type)">Send to patient</a></li>
+                      <li><a (click)="CancelRequest(report.type)">Cancel Request</a></li>
+                    </ul>
+                  </mat-menu>
+                </div>
+              </div>
+            </div> -->
+            <div class="previousHistoryCards">
+              <div class="previousHistoryDetail" *ngFor="let data of patientDetail?.notes, index as i">
+                <div class="previousDate">
+                  <h4>
+                    Friday, <span> {{ convertTimeStamp(data.date) }}</span>
+                  </h4>
+                </div>
+                <div class="previousConsulting">
+                  <div *ngIf="!data.is_report">
+                    <p>
+                      Patient understand and consents to the nature and
+                      limitations of a telemedicine consultation
+                    </p>
+                    <h5> Patient ID confirmed including DOB & address. Consent for telehealth obtained and limitations discussed : <span> Yes</span></h5>
+                    <h5>
+                      Presenting Complaints:
+                      <span>{{ data.presenting_complaints }}</span>
+                    </h5>
+                    <h5>
+                      Impression: <span>{{ data.impression }}</span>
+                    </h5>
+                    <h5>
+                      Investigation: <span>{{ data.investigation }}</span>
+                    </h5>
+                    <h5>
+                      Plan: <span>{{ data.plan }}</span>
+                    </h5>
+                    <h5>
+                      Billing Notes: <span>{{ data.billing_notes }}</span>
+                    </h5>
+                    <h5> Patient consulted about presenting to their regular GP in person : <span> Yes</span></h5>
+                    <br />
+                    <p> Consulted with&nbsp; <span>{{ data.doctor_name }}</span> </p>
+                  </div>
+                </div>
+                <!-- <div class="flex gap-4"> -->
+                  <div class="flex pdfElementWrapper" *ngIf="data.note_files.length">
+                    <div class="pdfDetails pdfDownload flex">
+                      <div class="pdfName" *ngFor="let report of data.note_files, index as j">
+                        <div class="report" [ngClass]="report.status == '1' ? 'pdfColor' : '' ">
+                          <div class="pdflogo" >
+                            <h4 class="mb-0" >PDF</h4>
+                          </div>
+                          <div class="pdfName" *ngIf="report.type =='pathology'">
+                            <p class="mb-0"><a href="{{report.path}}" target="_blank">Pathology Request PDF</a></p>
+                          </div>
+                          <div class="pdfName" *ngIf="report.type =='radiology'">
+                            <p class="mb-0"><a href="{{report.path}}" target="_blank">Radiology Request PDF</a></p>
+                          </div>
+                          <div class="pdfName" *ngIf="report.type == 'attachment'">
+                            <p class="mb-0"><a href="{{report.path}}" target="_blank">Download Attachment PDF</a></p>
+                          </div>
+                          <div class="pdfDropdown">
+                            <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                            <mat-menu #menu="matMenu">
+                              <ul class="listingMenus">
+                                <li><a href="{{report.path}}">Preview</a></li>
+                                <li *ngIf="report.status"><a (click)="SendFileToPatient(report.type,report.file_id,i,j)">Resend to patient</a></li>
+                                <li *ngIf="!report.status"><a (click)="SendFileToPatient(report.type,report.file_id,i,j)">Send to patient</a></li>
+                                <li><a (click)="CancelRequest(report.type, report.file_id)">Cancel Request</a></li>
+                              </ul>
+                            </mat-menu>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex pdfElementWrapper" *ngIf="data.prescriptions.length">
+                    <div class="pdfDetails pdfDownload flex">
+                      <div class="perscriptionPdf" *ngFor="let report of data.prescriptions, index as k">
+                        <div class="report" [ngClass]="report.status == '1' ? 'pdfColor' : ''">
+                          <div class="pdflogo" >
+                            <h4 class="mb-0">PDF</h4>
+                          </div>
+                          <div class="pdfName">
+                            <p class="mb-0"><a href="{{report.path}}" target="_blank"> {{report.type}}</a></p>
+                          </div>
+                          <div class="pdfDropdown">
+                            <button mat-button [matMenuTriggerFor]="menu"><i class="fas fa-ellipsis-h"></i></button>
+                            <mat-menu #menu="matMenu">
+                              <ul class="listingMenus">
+                                <li><a href="{{report.path}}">Preview</a></li> 
+                                <li *ngIf="report.status"><a (click)="SendFileToPatient(report.type,report.file_id,i,k)">Resend to patient</a></li>
+                                <li *ngIf="!report.status"><a (click)="SendFileToPatient(report.type,report.file_id,i,k)">Send to patient</a></li>
+                                <li><a (click)="CancelRequest(report.type,report.file_id)">Cancel Request</a></li>
+                              </ul>
+                            </mat-menu>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <!-- </div> -->
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+
+
+        <mat-tab label="Results">
+          <div id="result" class="patientTabs">
+            <div class="previousHistoryCards" *ngIf="patientDetail">
+              <div class="previousHistoryDetail" *ngFor="let result of patientResult?.notes">
+                <div class="previousDate">
+                  <h4>
+                    <span> {{result.date * 1000 | date : 'EEEE, dd MMM,yyyy' }}</span>
+                  </h4>
+                </div>
+                <div class="previousConsulting">
+                  <div>
+                    <p>
+                      {{result.message}} by {{result.doctor_name}}
+                    </p>
+
+                  </div>
+                </div>
+                <div class="flex pdfElementWrapper" *ngIf="result.note_files.length">
+                  <div class="pdfDetails flex">
+                    <div class="pdfName" *ngFor="let file of result.note_files">
+                      <div class="pdflogo">
+                        <h4 class="mb-0">PDF</h4>
+                      </div>
+                      <p class="mb-0"><a href="{{file.path}}" target="_blank">Download Report</a></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+  </div>
+</div>
