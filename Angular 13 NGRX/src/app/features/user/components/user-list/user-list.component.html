@@ -1,0 +1,80 @@
+<div class="button">
+  <button 
+    mat-flat-button 
+    color="primary" 
+    (click)="onAddNewUser()">
+      Add User
+  </button>
+</div>
+<mat-card 
+  class="example-card" 
+  appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>
+        {{pageTitle}}
+      </mat-card-title>
+      <div 
+        class="search-bar">
+        <input 
+          matInput 
+          (keyup)="applyFilter($event)" 
+          placeholder="Search by Name/Age" 
+          #input>
+      </div>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="table">
+        <table 
+          mat-table 
+          [dataSource]="filteredUsers" 
+          class="mat-elevation-z4">
+            <ng-container *ngFor="let column of displayedColumnsArray">
+              <ng-container 
+                [matColumnDef]="column.key">
+                  <th 
+                    mat-header-cell 
+                    *matHeaderCellDef> 
+                      {{column.header}} 
+                  </th>
+                  <td 
+                    mat-cell 
+                    *matCellDef="let element"> 
+                      {{element[column.key]}} 
+                  </td>
+              </ng-container>
+            </ng-container>
+            <ng-container 
+              matColumnDef="action">
+                <th 
+                  mat-header-cell 
+                  *matHeaderCellDef> 
+                    Action 
+                </th>
+                <td 
+                  mat-cell 
+                  *matCellDef="let element">
+                    <mat-icon 
+                      (click)="onEditUser(element.id)">
+                        edit
+                    </mat-icon>
+                    <mat-icon 
+                      (click)="onDeleteUser(element.id)">
+                        delete
+                    </mat-icon>
+                </td>
+            </ng-container>
+            <tr 
+              mat-header-row 
+              *matHeaderRowDef="displayedColumns">
+            </tr>
+            <tr 
+              mat-row 
+              *matRowDef="let row; columns: displayedColumns;">
+            </tr>
+        </table>
+        <div style="text-align: center; margin: 30px;" *ngIf="filteredUsers.data.length == 0">
+          No Data Found
+        </div>
+      </div>
+    </mat-card-content>
+</mat-card>

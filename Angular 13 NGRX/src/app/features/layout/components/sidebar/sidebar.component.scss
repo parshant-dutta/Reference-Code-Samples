@@ -1,0 +1,28 @@
+.sidenav-container {
+  height: 100%;
+}
+
+.sidenav {
+  width: 200px;
+}
+
+.menu-items {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  text-decoration: none;
+  color: black;
+}
+
+.menu-items.is-active {
+  background-color: lightblue;
+}
+
+.menu-items:hover {
+  background-color: lightblue;
+}
+
+mat-sidenav-content {
+  background-color: rgba(63, 81, 181, 0.08);
+  flex: 1;
+}

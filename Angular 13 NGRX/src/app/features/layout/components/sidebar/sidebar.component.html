@@ -1,0 +1,37 @@
+<mat-sidenav-container class="sidenav-container">
+      <mat-sidenav class="sidenav" 
+            mode="side" 
+            [opened]="isSidenavOpen">
+            <mat-nav-list>
+                  <ng-container>
+                        <a class="menu-items" 
+                              routerLink="/dashboard" 
+                              routerLinkActive="is-active" 
+                              mat-list-item>
+                              <div class="sidenav-menu-icons">
+                                    <span>
+                                          Dashboard
+                                    </span>
+                              </div>
+                        </a>
+                        <a class="menu-items" 
+                              routerLink="/users" 
+                              routerLinkActive="is-active" 
+                              mat-list-item>
+                              <div class="sidenav-menu-icons">
+                                    <span>
+                                          Users
+                                    </span>
+                              </div>
+                        </a>
+                  </ng-container>
+            </mat-nav-list>
+      </mat-sidenav>
+      <mat-sidenav-content>
+            <div  
+                  class="container" 
+                  id="boundary-container">
+                  <router-outlet></router-outlet>
+            </div>
+      </mat-sidenav-content>
+</mat-sidenav-container>
